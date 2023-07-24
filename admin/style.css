@@ -30,3 +30,11 @@ label > i[title] {
 }
 
 /* Add your styles here */
+#yahka_mapping table {
+	width:			auto;
+}
+
+#yahka_mapping table td {
+	padding:		2px 3em 2px 2px;
+}
+

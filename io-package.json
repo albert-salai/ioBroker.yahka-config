@@ -1,106 +1,85 @@
 {
-	"common": {
-		"name": "yahka-config",
-		"version": "0.0.1",
-		"news": {
-			"0.0.1": {
-				"en": "initial release",
-				"de": "Erstveröffentlichung",
-				"ru": "Начальная версия",
-				"pt": "lançamento inicial",
-				"nl": "Eerste uitgave",
-				"fr": "Première version",
-				"it": "Versione iniziale",
-				"es": "Versión inicial",
-				"pl": "Pierwsze wydanie",
-				"uk": "Початкова версія",
-				"zh-cn": "首次出版"
-			}
-		},
-		"title": "yahka-config",
-		"titleLang": {
-			"en": "yahka-config",
-			"de": "yahka-config",
-			"ru": "Yahka-config",
-			"pt": "yahka-config",
-			"nl": "yahka-config",
-			"fr": "yahka-config",
-			"it": "yahka-config",
-			"es": "yahka-config",
-			"pl": "yahka-config",
-			"uk": "yahka-config",
-			"zh-cn": "yahka配置"
-		},
-		"desc": {
-			"en": "yahka-config",
-			"de": "yahka-config",
-			"ru": "Yahka-config",
-			"pt": "yahka-config",
-			"nl": "yahka-config",
-			"fr": "yahka-config",
-			"it": "yahka-config",
-			"es": "yahka-config",
-			"pl": "yahka-config",
-			"uk": "yahka-config",
-			"zh-cn": "yahka配置"
-		},
-		"authors": [
-			"Albert Salai <albert2013@salai.de>"
-		],
-		"keywords": [],
-		"license": "MIT",
-		"platform": "Javascript/Node.js",
-		"main": "build/main.js",
-		"icon": "yahka-config.png",
-		"enabled": true,
-		"extIcon": "https://raw.githubusercontent.com/albert-salai/ioBroker.yahka-config/main/admin/yahka-config.png",
-		"readme": "https://github.com/albert-salai/ioBroker.yahka-config/blob/main/README.md",
-		"loglevel": "info",
-		"mode": "daemon",
-		"type": "general",
-		"compact": true,
-		"connectionType": "local",
-		"dataSource": "poll",
-		"adminUI": {
-			"config": "materialize"
-		},
-		"dependencies": [
-			{
-				"js-controller": ">=3.3.22"
-			}
-		],
-		"globalDependencies": [
-			{
-				"admin": ">=5.0.0"
-			}
-		]
-	},
-	"native": {
-		"option1": true,
-		"option2": "42"
-	},
-	"objects": [],
-	"instanceObjects": [
-		{
-			"_id": "info",
-			"type": "channel",
-			"common": {
-				"name": "Information"
-			},
-			"native": {}
-		},
-		{
-			"_id": "info.connection",
-			"type": "state",
-			"common": {
-				"role": "indicator.connected",
-				"name": "Device or service connected",
-				"type": "boolean",
-				"read": true,
-				"write": false,
-				"def": false
-			},
-			"native": {}
-		}
-	]
+    "common": {
+        "name": "yahka-config",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "uk": "Початкова версія",
+                "zh-cn": "首次出版"
+            }
+        },
+        "title": "yahka-config",
+        "titleLang": {
+            "en": "yahka-config",
+            "de": "yahka-config",
+            "ru": "Yahka-config",
+            "pt": "yahka-config",
+            "nl": "yahka-config",
+            "fr": "yahka-config",
+            "it": "yahka-config",
+            "es": "yahka-config",
+            "pl": "yahka-config",
+            "uk": "yahka-config",
+            "zh-cn": "yahka配置"
+        },
+        "desc": {
+            "en": "yahka-config",
+            "de": "yahka-config",
+            "ru": "Yahka-config",
+            "pt": "yahka-config",
+            "nl": "yahka-config",
+            "fr": "yahka-config",
+            "it": "yahka-config",
+            "es": "yahka-config",
+            "pl": "yahka-config",
+            "uk": "yahka-config",
+            "zh-cn": "yahka配置"
+        },
+        "authors": [
+            "Albert Salai <albert2013@salai.de>"
+        ],
+        "keywords": [],
+        "license": "MIT",
+        "platform": "Javascript/Node.js",
+        "main": "build/main.js",
+        "icon": "yahka-config.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/albert-salai/ioBroker.yahka-config/main/admin/yahka-config.png",
+        "readme": "https://github.com/albert-salai/ioBroker.yahka-config/blob/main/README.md",
+        "loglevel": "info",
+        "mode": "schedule",
+        "schedule": "0 1 * * *",
+        "allowInit": true,
+        "type": "iot-systems",
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "poll",
+        "adminUI": {
+            "config": "materialize"
+        },
+        "dependencies": [
+            {
+                "js-controller": ">=3.3.22"
+            }
+        ],
+        "globalDependencies": [
+            {
+                "admin": ">=5.0.0"
+            }
+        ]
+    },
+    "native": {
+        "mapping": {}
+    },
+    "objects": [],
+    "instanceObjects": []
 }

@@ -1,11 +1,13 @@
 // This file extends the AdapterConfig type from "@types/iobroker"
 
+
 // Augment the globally declared type ioBroker.AdapterConfig
 declare global {
+	type ConfigMapping = {[index: string]: {[index: string]: boolean}};
+
 	namespace ioBroker {
 		interface AdapterConfig {
-			option1: boolean;
-			option2: string;
+			mapping: ConfigMapping
 		}
 	}
 }
