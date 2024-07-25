@@ -19,7 +19,7 @@ interface DevCharacteristic {
 	name:					string,
 	enabled?:				boolean,
 	inOutFunction:			string,
-	inOutParameters:		string,
+	inOutParameters:		string | boolean | number,
 	conversionFunction?:	string,
 	conversionParameters?:	{ toHomeKit: string, toIOBroker: string },
 }
@@ -42,7 +42,8 @@ interface DevConfig {
 	model:					string,
 	firmware:				string,
 	services:				DevService[],
-	enabled:				boolean
+	enabled:				boolean,
+	groupString:			string
 }
 
 // ~~~~~~~~
@@ -74,7 +75,7 @@ class YahkaConfig extends utils.Adapter {
 	 */
 	private async onReady(): Promise<void> {
 		const mapping = this.config.mapping;
-		this.log.info(sprintf('%-30s %-20s %-50s', 'onReady()', 'mapping', '\n'+JSON.stringify(mapping, null, 4)));
+		//this.log.info(sprintf('%-30s %-20s %-50s', 'onReady()', 'mapping', '\n'+JSON.stringify(mapping, null, 4)));
 
 		// create configs
 		for (const [dstId, srcIdsObj] of Object.entries(mapping)) {
@@ -87,13 +88,15 @@ class YahkaConfig extends utils.Adapter {
 				await this.createYahkaConfig(yahkaDstApt, srcIds);
 			}
 		}
+
+		this.terminate ? this.terminate('yahka config updated. adapter stopped until next scheduled moment') : process.exit(0);
 	}
 
 	/**
 	 * Is called when adapter shuts down - callback has to be called under any circumstances!
 	 */
 	private onUnload(callback: () => void): void {
-		try {		// clearTimeout(timeout1); ...
+		try {
 		} finally {
 			callback();
 		}
@@ -104,7 +107,8 @@ class YahkaConfig extends utils.Adapter {
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	async createYahkaConfig(yahkaDstApt: ioBroker.Object, srcInsts: string[]): Promise<void> {		// e.g.: "system.adapter.yahka.0", [ "fritzdect.0", ... ]
 		const yahkaAptId = yahkaDstApt._id;
-		this.log.info(sprintf('%-30s %-20s\n%s', 'createYahkaConfig()', yahkaAptId, JSON.stringify(srcInsts, null, 4)));
+		this.log.info(sprintf('%-30s %-20s %-50s', 'createYahkaConfig()', 'target', yahkaAptId));
+		//this.log.info(sprintf('%-30s %-20s\n%s', 'createYahkaConfig()', yahkaAptId, JSON.stringify(srcInsts, null, 4)));
 
 		// collect source state objects
 		let iobSrcObjs: ioBroker.StateObject[] = [];
@@ -117,7 +121,7 @@ class YahkaConfig extends utils.Adapter {
 			iobSrcObjs = iobSrcObjs.concat(statesArr);
 		}
 		iobSrcObjs.sort((obj1, obj2) => (obj1._id > obj2._id) ? +1 : ((obj1._id < obj2._id) ? -1 : 0));
-		//this.log.info(sprintf('%-30s %-20s %-50s %s', 'createYahkaConfig()', dstInst, 'yahkaObjs', '\n'+JSON.stringify(yahkaObjs, null, 4)));
+		//this.log.info(sprintf('%-30s %-20s %-50s %s', 'createYahkaConfig()', '', 'yahkaObjs', '\n'+JSON.stringify(iobSrcObjs, null, 4)));
 
 		// get yahkaNewDevs and enable/disable yahka configs
 		const yahkaNewDevs = await this.createYahkaDevs(iobSrcObjs);
@@ -137,7 +141,8 @@ class YahkaConfig extends utils.Adapter {
 			const keep = ! yahkaNewDevs.some((newDev) => (newDev.name === yahkaOldDev.name));
 			if (keep) {
 				this.log.warn(sprintf('%-30s %-20s %-50s %s', 'createYahkaConfig()', 'keeping', yahkaOldDev.name, ''));
-				yahkaNewDevs.push(yahkaOldDev);
+				yahkaOldDev.enabled = false;
+				yahkaNewDevs.push();
 			}
 		}
 
@@ -174,7 +179,7 @@ class YahkaConfig extends utils.Adapter {
 		} else {
 			// process array of iobSrcObjs
 			for (const iobSrcObj of iobSrcObjs) {
-				const yahkaNewDev = await this.createYahkaDev(iobSrcObj);
+				const yahkaNewDev = await this.createYahkaDev(iobSrcObjs, iobSrcObj);
 				if  ( yahkaNewDev ) {
 					yahkaNewDevs.push(yahkaNewDev);
 				}
@@ -187,10 +192,10 @@ class YahkaConfig extends utils.Adapter {
 
 
 
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~
-	// createYahkaDev(iobSrcObj)
-	// ~~~~~~~~~~~~~~~~~~~~~~~~~
-	async createYahkaDev(iobSrcObj: ioBroker.StateObject): Promise<DevConfig | null > {		// iobObj: iobroker object
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	// createYahkaDev(iobSrcObjs, iobSrcObj)
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	async createYahkaDev(iobSrcObjs: ioBroker.StateObject[], iobSrcObj: ioBroker.StateObject): Promise<DevConfig | null > {		// iobObj: iobroker object
 		const objRole		= iobSrcObj.common.role;					// 'value.temperature'
 		const objName		= iobSrcObj.common.name as string;			// 'OG.Küche.targettemp'
 		const objValType	= iobSrcObj.common.type;					// 'string', 'boolean', 'number', ...
@@ -206,11 +211,12 @@ class YahkaConfig extends utils.Adapter {
 			'name':				objId,									// NOTE: yahka adapter uses 'name' to build homekit UUID!
 			'manufacturer':		idPath.slice(0,2).join('.'),			// visible within iOS home app
 			'serial':			idPath.slice(2  ).join('.'),			// visible within iOS home app
-			'model':			'?',									// visible within iOS home app
+			'model':			objName,								// visible within iOS home app
 			'firmware':			'?',									// visible within iOS home app
 			'category':			'?',
 			'services':			[],										// default
-			'enabled':			true
+			'enabled':			true,
+			'groupString':		idPath.slice(0,2).join('.')				// used by adapter only
 		};
 
 		// ~~~~~~~~~~~~~~~~~~~~
@@ -221,7 +227,6 @@ class YahkaConfig extends utils.Adapter {
 			// danfoss-icon HousePause
 			// ~~~~~~~~~~~~~~~~~~~~~~~
 			if (idLeaf === 'HousePause') {															// objId: danfoss-icon.0.House.HousePause
-				devCfg.model	= 'danfoss-icon';
 				devCfg.firmware	= '';
 				devCfg.category = AccCatId.Switch;
 				devCfg.services = [
@@ -248,7 +253,7 @@ class YahkaConfig extends utils.Adapter {
 							{ 'name': 'CurrentTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.RoomTemp'		},
 							{ 'name': 'TemperatureDisplayUnits',	'inOutFunction': 'const',					'inOutParameters': '0', 					},
 							{ 'name': 'TargetHeatingCoolingState',	'inOutFunction': 'const',					'inOutParameters': '3', 					},
-							{ 'name': 'CurrentHeatingCoolingState',	'inOutFunction': 'ioBroker.State',			'inOutParameters': idBase+'.ValveState',
+							{ 'name': 'CurrentHeatingCoolingState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.ValveState',
 								'conversionFunction': 'script', 'conversionParameters': { 'toHomeKit': 'return (value) ? 1 : 2;', 'toIOBroker': 'return (value == 1);' }
 							}		// TargetHeatingCoolingState:		0 := OFF, 1 := HEAT, 2 := COOL, 3 := AUTO
 						]			// CurrentHeatingCoolingState:		0 := OFF, 1 := HEAT, 2 := COOL
@@ -261,7 +266,6 @@ class YahkaConfig extends utils.Adapter {
 		// ~~~~~~~~~~~~~~																// openweathermap.0.forecast.current.temperature
 		} else if (idPath[0] === 'openweathermap'  &&  idPath[3] === 'current') {		// openweathermap.0.forecast.current.humidity
 			const nameStr	= objName.split('.').join(' ');								// 'M41 Garten humidity'
-			devCfg.model	= idPath.slice(2).join('.');								// forecast.current.humidity
 
 			// openweathermap current temperature
 			// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -298,7 +302,6 @@ class YahkaConfig extends utils.Adapter {
 		} else if (idPath[0] === 'shelly') {
 			const nameId	= `${idBase}.ChannelName`;
 			const nameStr	=    (await this.getForeignStateAsync(nameId) || {}).val || '?';			// 'Terrassenlampen'
-			devCfg.model	= ''+(await this.getForeignStateAsync(idPath.slice(0,-2).join('.') + '.type'   ) || {val:'?'}).val;
 			devCfg.firmware	= ''+(await this.getForeignStateAsync(idPath.slice(0,-2).join('.') + '.version') || {val:'?'}).val;
 
 			// shelly dimmer
@@ -317,7 +320,6 @@ class YahkaConfig extends utils.Adapter {
 
 			// shelly switch
 			} else if (idLeaf === 'Switch'  &&  idPath[3].startsWith('Relay')) {		// objId: 'shelly.0.SHPLG-S#6A0761#1.Relay0.Switch'
-				devCfg.model	= ''+(await this.getForeignStateAsync(idPath.slice(0,-2).join('.') + '.type'   ) || {val:'?'}).val;
 				devCfg.firmware	= ''+(await this.getForeignStateAsync(idPath.slice(0,-2).join('.') + '.version') || {val:'?'}).val;
 				devCfg.category = AccCatId.Switch;
 				devCfg.services = [
@@ -325,7 +327,7 @@ class YahkaConfig extends utils.Adapter {
 						'type': 'Switch', 'subType': '', 'name': ''+nameStr,
 						'characteristics': [
 							{ 'name': 'Name',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': nameId	},
-							{ 'name': 'On',		'inOutFunction': 'ioBroker.State',			'inOutParameters': objId	}
+							{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
 						]
 					}
 				];
@@ -337,7 +339,6 @@ class YahkaConfig extends utils.Adapter {
 		} else if (idPath[0] === 'sonoff'  &&  [ 'POWER1', 'POWER2', 'SI7021_Temperature', 'SI7021_Humidity' ].indexOf(idLeaf) >= 0) {
 			// Sonoff Device Name
 			const nameStr	=    (await this.getForeignStateAsync(`${idBase}.DeviceName`			) || {}).val  ||  '?';		// 'Keller Sensor'
-			devCfg.model	= ''+(await this.getForeignStateAsync(`${idBase}.INFO.Info1_Module`	) || {}).val  ||  '?';		// 'Sonoff TH'
 			devCfg.firmware	= ''+(await this.getForeignStateAsync(`${idBase}.INFO.Info1_Version`	) || {}).val  ||  '?';		// '12.1.1(tasmota)'
 
 			// sonoff POWER1, POWER2
@@ -348,7 +349,7 @@ class YahkaConfig extends utils.Adapter {
 					{
 						'type': 'Switch', 'subType': '', 'name': ''+nameStr,
 						'characteristics': [
-							{ 'name': 'Name',	'inOutFunction': 'ioBroker.State',			'inOutParameters': `${idBase}.DeviceName`	},
+							{ 'name': 'Name',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': `${idBase}.DeviceName`	},
 							{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId					}
 						]
 					}
@@ -362,7 +363,7 @@ class YahkaConfig extends utils.Adapter {
 					{
 						'type': 'TemperatureSensor', 'subType': '', 'name': ''+nameStr,
 						'characteristics': [
-							{ 'name': 'Name',						'inOutFunction': 'ioBroker.State',			'inOutParameters': `${idBase}.DeviceName`	},
+							{ 'name': 'Name',						'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': `${idBase}.DeviceName`	},
 							{ 'name': 'CurrentTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId					},
 						]
 					}
@@ -376,7 +377,7 @@ class YahkaConfig extends utils.Adapter {
 					{
 						'type': 'HumiditySensor', 'subType': '', 'name': ''+nameStr,
 						'characteristics': [
-							{ 'name': 'Name',						'inOutFunction': 'ioBroker.State',			'inOutParameters': `${idBase}.DeviceName`	},
+							{ 'name': 'Name',						'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': `${idBase}.DeviceName`	},
 							{ 'name': 'CurrentRelativeHumidity',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId					},
 						]
 					}
@@ -433,7 +434,7 @@ class YahkaConfig extends utils.Adapter {
 							'characteristics': [
 								{ 'name': 'TemperatureDisplayUnits',	'inOutFunction': 'const',					'inOutParameters': '0'								},
 								{ 'name': 'Name',						'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': `${idBase}.name`					},
-								{ 'name': 'TargetTemperature',			'inOutFunction': 'ioBroker.State',			'inOutParameters': `${idBase}.tsoll`				},
+								{ 'name': 'TargetTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': `${idBase}.tsoll`				},
 								{ 'name': 'CurrentTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': `${idBase}.celsius` 				},
 								{ 'name': 'TargetHeatingCoolingState',	'inOutFunction': 'const',					'inOutParameters': '3', 							},
 								{ 'name': 'CurrentHeatingCoolingState', 'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': `${idBase}.heatingCoolingState`	},
@@ -472,7 +473,7 @@ class YahkaConfig extends utils.Adapter {
 					{
 						'type': 'Switch', 'subType': '', 'name': ''+nameStr,
 						'characteristics': [
-							{ 'name': 'Name',				'inOutFunction': 'ioBroker.State',			'inOutParameters': `${idBase}.name`		},
+							{ 'name': 'Name',				'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': `${idBase}.name`		},
 							{ 'name': 'On',					'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': `${idBase}.state`	}
 						]
 					},
@@ -506,26 +507,131 @@ class YahkaConfig extends utils.Adapter {
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~
 		} else if (idPath[0] === 'tr-064'  &&  idPath[2] == 'states'  &&  (objRole === 'state'  ||  objRole === 'button')) {
 			if (objValType === 'boolean'  &&  idLeaf !== 'wlan') {						// idPath: e.g.:	'tr-064.0.states.wps'
-				const nameStr	= objName  ||  (idLeaf + ' ' + devCfg.model);			// 'wps'
-				devCfg.model	= idPath.slice(0, 2).join('.');							//					'tr-064.0'
 				devCfg.category	= AccCatId.Switch;
 				devCfg.services = [
 					{
-						'type': 'Switch', 'subType': '', 'name': nameStr,
+						'type': 'Switch', 'subType': '', 'name': devCfg.model,
 						'characteristics': [
-							{ 'name': 'Name',	'inOutFunction': 'const',					'inOutParameters': nameStr	},
-							{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+							{ 'name': 'Name',	'inOutFunction': 'const',					'inOutParameters': devCfg.model	},
+							{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId		}
 						]
 					}
 				];
 			}
+
+		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		// switchboard-io boolean switch / contact sensor
+		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		} else if (idPath[0] === '0_userdata'  &&  idPath[2] === 'pin') {
+			if (objRole === 'door.lock') {
+				devCfg.category	= AccCatId.Door_lock;
+				devCfg.services = [
+					{
+						'type': 'LockMechanism', 'subType': '', 'name': objName,
+						'characteristics': [
+							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName												},
+							{ 'name': 'LockTargetState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId,			'conversionFunction': 'invert'	},
+							{ 'name': 'LockCurrentState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId+'_status',	'conversionFunction': 'invert'	},
+						]
+					}
+				];
+
+			} else if (objRole === 'garage.opener') {
+				devCfg.category	= AccCatId.Door_lock;
+				devCfg.services = [
+					{
+						'type': 'GarageDoorOpener', 'subType': '', 'name': objName,
+						'characteristics': [
+							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName												},
+							{ 'name': 'TargetDoorState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId,			'conversionFunction': 'invert'	},
+							{ 'name': 'CurrentDoorState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId+'_status',	'conversionFunction': 'invert'	},
+							{ 'name': 'ObstructionDetected','inOutFunction': 'const',					'inOutParameters': false												},
+						]
+					}
+				];
+
+			} else if (objRole === 'switch.light') {
+				devCfg.category = AccCatId.Switch;
+				devCfg.services = [
+					{
+						'type': 'Switch', 'subType': '', 'name': objName,
+						'characteristics': [
+							{ 'name': 'Name',	'inOutFunction': 'const',					'inOutParameters': objName	},
+							{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+						]
+					}
+				];
+
+			} else if (objRole === 'switch.fan') {
+				devCfg.category = AccCatId.Fan;
+				devCfg.services = [
+					{
+						'type': 'Fan', 'subType': '', 'name': objName,
+						'characteristics': [
+							{ 'name': 'Name',	'inOutFunction': 'const',					'inOutParameters': objName	},
+							{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+						]
+					}
+				];
+
+			} else if (objRole === 'sensor.leak') {
+				devCfg.category = AccCatId.Sensor;
+				devCfg.services = [
+					{
+						'type': 'LeakSensor', 'subType': '', 'name': objName,
+						'characteristics': [
+							{ 'name': 'Name',			'inOutFunction': 'const',					'inOutParameters': objName	},
+							{ 'name': 'LeakDetected',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+						]
+					}
+				];
+
+			} else if (objRole === 'sensor.motion') {
+				devCfg.category = AccCatId.Sensor;
+				devCfg.services = [
+					{
+						'type': "MotionSensor", 'subType': '', 'name': objName,
+						'characteristics': [
+							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName	},
+							{ 'name': "MotionDetected",		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+						]
+					}
+				];
+
+			} else if (objRole === 'sensor.occupancy') {
+				devCfg.category = AccCatId.Sensor;
+				devCfg.services = [
+					{
+						'type': "OccupancySensor", 'subType': '', 'name': objName,
+						'characteristics': [
+							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName	},
+							{ 'name': "OccupancyDetected",	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+						]
+					}
+				];
+
+			} else if (objRole === 'indicator') {
+				devCfg.category = AccCatId.Sensor;
+				devCfg.services = [
+					{
+						'type': 'ContactSensor', 'subType': '', 'name': objName,
+						'characteristics': [
+							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName	},
+							{ 'name': 'ContactSensorState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	},
+						]
+					}
+				];
+
+			} else {
+				this.log.debug(sprintf('%-30s %-20s %s (role "%s" not implemtented)', 'createYahkaDev()', 'ignored', objId, objRole));
+			}
+
 
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// tr064 devices active state
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~
 		} else if (idPath[0] === 'tr-064'  &&  idPath[2] == 'devices'  &&  idLeaf == 'active'  &&  objRole === 'state') {
 			const nameStr	= idPath[idPath.length - 2];					// devCfg.name:	e.g.:	'iPhone-Albi'
-			devCfg.model	= idPath.slice(0, 2).join('.');					// idPath:		e.g.:	'tr-064.0.devices.iPhone-Albi.active'
 			devCfg.category	= AccCatId.Sensor;
 			devCfg.services = [
 				{

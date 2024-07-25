@@ -81,6 +81,7 @@ async function load(_settings, onChange) {
 	// srcIds, dstIds
 	const srcAdapters	= [ 'tr-064', 'fritzdect', 'tradfri', 'hue', 'hue-extended', 'shelly', 'sonoff', 'openweathermap', 'kernel', 'danfoss-icon', 'zwave' ];
 	const srcIds		= instIds.filter(instId => srcAdapters.find(name => instId.startsWith(name + '.')));
+	srcIds.unshift('0_userdata.0');
 	const dstIds		= instIds.filter(instId => instId.startsWith('yahka.'));
 	console.log('load(): srcIds: ' + JSON.stringify(srcIds,	null, 4));
 	console.log('load(): dstIds: ' + JSON.stringify(dstIds, null, 4));
