@@ -219,11 +219,16 @@ class YahkaConfig extends utils.Adapter {
 			'groupString':		idPath.slice(0,2).join('.')				// used by adapter only
 		};
 
-		// ~~~~~~~~~~~~~~~~~~~~
-		// danfoss-icon channel
-		// ~~~~~~~~~~~~~~~~~~~~
-		if (idPath[0] === 'danfoss-icon') {
 
+		// ~~~~~~~~~~~~~~~~~~~~~~~~~
+		// zigbee2mqtt device states
+		// ~~~~~~~~~~~~~~~~~~~~~~~~~
+		if (idPath[0] === 'zigbee2mqtt') {
+
+		// ~~~~~~~~~~~~~~~~~~
+		// danfoss-icon state
+		// ~~~~~~~~~~~~~~~~~~
+		} else if (idPath[0] === 'danfoss-icon') {
 			// danfoss-icon HousePause
 			// ~~~~~~~~~~~~~~~~~~~~~~~
 			if (idLeaf === 'HousePause') {															// objId: danfoss-icon.0.House.HousePause
