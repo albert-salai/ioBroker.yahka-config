@@ -25,7 +25,7 @@ var utils = __toESM(require("@iobroker/adapter-core"));
 var import_io_package = __toESM(require("iobroker.yahka/io-package.json"));
 var import_sprintf_js = require("sprintf-js");
 var import_mqtt = __toESM(require("mqtt"));
-const AccCatId = Object.entries(import_io_package.default.objects[0].native).reduce((result, [key, val]) => {
+const AccCatId = Object.entries((import_io_package.default.objects[0] || { "native": {} }).native).reduce((result, [key, val]) => {
   result[val.text.replace(/ /g, "_")] = key;
   return result;
 }, {});
@@ -98,7 +98,7 @@ class YahkaConfig extends utils.Adapter {
         yahkaNewDevs.sort(sortBy("name"));
         for (const yahkaNewDev of yahkaNewDevs) {
           const yahkaOldDev = yahkaOldDevs.find((oldDev) => oldDev.name === yahkaNewDev.name);
-          yahkaNewDev.enabled = yahkaOldDev ? yahkaOldDev.enabled : true;
+          yahkaNewDev.enabled = yahkaOldDev ? !!yahkaOldDev.enabled : true;
         }
         let yahkaChanged = false;
         for (const yahkaOldDev of yahkaOldDevs) {
@@ -134,10 +134,10 @@ class YahkaConfig extends utils.Adapter {
     const stateObjs = await this.getForeignObjectsAsync(`${srcInstId}.states.*`, "state") || {};
     for (const state of Object.values(stateObjs).sort(sortBy("_id"))) {
       const idPath = state._id.split(".");
-      if (state.common.type === "boolean" && !["wlan", "wlan24", "wlan50"].includes(idPath.slice(-1)[0])) {
+      if (state.common.type === "boolean" && !["wlan", "wlan24", "wlan50"].includes(idPath.slice(-1)[0] || "")) {
         this.log.info((0, import_sprintf_js.sprintf)("%-31s %-20s %-50s %s", "create_tr064()", "state", state._id, state.common.name));
         const accConfig = {
-          "category": AccCatId.Switch,
+          "category": AccCatId["Switch"] || "",
           "name": state._id,
           // NOTE: yahka adapter uses 'name' to build homekit UUID!
           "manufacturer": idPath.slice(0, 2).join("."),
@@ -181,8 +181,8 @@ class YahkaConfig extends utils.Adapter {
       let accCategory = "";
       let srvType = "";
       const characteristics = [];
-      if (idPath[3].startsWith("Relay")) {
-        accCategory = AccCatId.Switch;
+      if ((idPath[3] || "").startsWith("Relay")) {
+        accCategory = AccCatId["Switch"] || "";
         srvType = "Switch";
         characteristics.push({
           "name": "On",
@@ -190,7 +190,7 @@ class YahkaConfig extends utils.Adapter {
           "inOutParameters": `${channel._id}.Switch`
         });
       } else if (idPath[3] === "lights") {
-        accCategory = AccCatId.Lightbulb;
+        accCategory = AccCatId["Lightbulb"] || "";
         srvType = "Lightbulb";
         characteristics.push({
           "name": "On",
@@ -218,7 +218,7 @@ class YahkaConfig extends utils.Adapter {
           "category": accCategory,
           "manufacturer": "shelly",
           // visible within iOS home app
-          "serial": idPath[2],
+          "serial": idPath[2] || "",
           // visible within iOS home app
           "services": []
         };
@@ -263,7 +263,7 @@ class YahkaConfig extends utils.Adapter {
         // used by adapter only
       };
       if (objRole === "door.lock") {
-        accConfig.category = AccCatId.Door_lock;
+        accConfig.category = AccCatId["Door_lock"] || "";
         accConfig.services = [
           {
             "type": "LockMechanism",
@@ -277,7 +277,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "garage.opener") {
-        accConfig.category = AccCatId.Door_lock;
+        accConfig.category = AccCatId["Door_lock"] || "";
         accConfig.services = [
           {
             "type": "GarageDoorOpener",
@@ -292,7 +292,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "switch.light") {
-        accConfig.category = AccCatId.Switch;
+        accConfig.category = AccCatId["Switch"] || "";
         accConfig.services = [
           {
             "type": "Switch",
@@ -305,7 +305,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "switch.fan") {
-        accConfig.category = AccCatId.Fan;
+        accConfig.category = AccCatId["Fan"] || "";
         accConfig.services = [
           {
             "type": "Fan",
@@ -318,7 +318,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "sensor.leak") {
-        accConfig.category = AccCatId.Sensor;
+        accConfig.category = AccCatId["Sensor"] || "";
         accConfig.services = [
           {
             "type": "LeakSensor",
@@ -331,7 +331,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "sensor.motion") {
-        accConfig.category = AccCatId.Sensor;
+        accConfig.category = AccCatId["Sensor"] || "";
         accConfig.services = [
           {
             "type": "MotionSensor",
@@ -344,7 +344,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "sensor.occupancy") {
-        accConfig.category = AccCatId.Sensor;
+        accConfig.category = AccCatId["Sensor"] || "";
         accConfig.services = [
           {
             "type": "OccupancySensor",
@@ -357,7 +357,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "indicator") {
-        accConfig.category = AccCatId.Sensor;
+        accConfig.category = AccCatId["Sensor"] || "";
         accConfig.services = [
           {
             "type": "ContactSensor",
@@ -392,7 +392,7 @@ class YahkaConfig extends utils.Adapter {
       const idPath = housePause._id.split(".");
       const name = housePause.common.name.toString();
       const accConfig = {
-        "category": AccCatId.Switch,
+        "category": AccCatId["Switch"] || "",
         "name": housePause._id,
         // NOTE: yahka adapter uses 'name' to build homekit UUID!
         "manufacturer": group,
@@ -415,6 +415,7 @@ class YahkaConfig extends utils.Adapter {
           { "name": "On", "inOutFunction": "ioBroker.State.OnlyACK", "inOutParameters": housePause._id }
         ]
       });
+      this.log.debug((0, import_sprintf_js.sprintf)("%-30s %-20s %-50s %s", "create_danfoss()", `created Thermostat`, accConfig.name, name));
     }
     const targetTemps = await this.getForeignObjectsAsync(`${srcInstId}.room-*.TargetTemp`, "state");
     for (const targetTempObj of Object.values(targetTemps).sort(sortBy("_id"))) {
@@ -423,7 +424,7 @@ class YahkaConfig extends utils.Adapter {
       const idBase = idPath.slice(0, -1).join(".");
       const name = targetTempObj.common.name.toString();
       const accConfig = {
-        "category": AccCatId.Thermostat,
+        "category": AccCatId["Thermostat"] || "",
         "name": targetTempObj._id,
         // NOTE: yahka adapter uses 'name' to build homekit UUID!
         "manufacturer": group,
@@ -458,6 +459,7 @@ class YahkaConfig extends utils.Adapter {
         ]
         // CurrentHeatingCoolingState:		0 := OFF, 1 := HEAT, 2 := COOL
       });
+      this.log.debug((0, import_sprintf_js.sprintf)("%-30s %-20s %-50s %s", "create_danfoss()", `created Thermostat`, accConfig.name, name));
     }
     return accConfigs;
   }
@@ -493,7 +495,7 @@ class YahkaConfig extends utils.Adapter {
         const featureNames = features.map((feature) => feature.name);
         const exposedLight = typedFeatures.filter((expose) => expose.type === "light")[0];
         if (exposedLight) {
-          accCategory = AccCatId.Lightbulb;
+          accCategory = AccCatId["Lightbulb"] || "";
           srvType = "Lightbulb";
           for (const feature of exposedLight.features) {
             if (feature.name === "state") {
@@ -522,7 +524,7 @@ class YahkaConfig extends utils.Adapter {
             }
           }
         } else if (featureNames.includes("contact")) {
-          accCategory = AccCatId.Sensor;
+          accCategory = AccCatId["Sensor"] || "";
           srvType = "ContactSensor";
           for (const feature of features) {
             if (feature.name === "contact") {
@@ -542,7 +544,7 @@ class YahkaConfig extends utils.Adapter {
             }
           }
         } else if (featureNames.includes("water_leak")) {
-          accCategory = AccCatId.Sensor;
+          accCategory = AccCatId["Sensor"] || "";
           srvType = "LeakSensor";
           for (const feature of features) {
             if (feature.name === "water_leak") {
@@ -617,8 +619,87 @@ class YahkaConfig extends utils.Adapter {
    * @param _yahkaDstApt
    * @returns
    */
-  async create_fritzdect(_srcInstId, _yahkaDstApt) {
+  async create_fritzdect(srcInstId, _yahkaDstApt) {
     const accConfigs = [];
+    const channels = await this.getForeignObjectsAsync(`${srcInstId}.*`, "channel");
+    for (const channel of Object.values(channels)) {
+      const productname = await this.getForeignStateAsync(`${channel._id}.productname`);
+      if (productname) {
+        let accCategory = "";
+        let srvType = "";
+        const characteristics = [];
+        if (productname.val === "FRITZ!DECT Repeater 100") {
+          accCategory = AccCatId["Sensor"] || "";
+          srvType = "TemperatureSensor";
+          characteristics.push({
+            "name": "CurrentTemperature",
+            "inOutFunction": "ioBroker.State.OnlyACK",
+            "inOutParameters": `${channel._id}.celsius`
+          });
+          await this.enableHistory(`${channel._id}.celsius`);
+        } else if (productname.val === "FRITZ!DECT 200") {
+          accCategory = AccCatId["Switch"] || "";
+          srvType = "Switch";
+          characteristics.push({
+            "name": "On",
+            "inOutFunction": "ioBroker.State.OnlyACK",
+            "inOutParameters": `${channel._id}.state`
+          });
+          await this.enableHistory(`${channel._id}.state`);
+        } else if (productname.val === "FRITZ!DECT 301") {
+          accCategory = AccCatId["Thermostat"] || "";
+          srvType = "Thermostat";
+          characteristics.push(
+            { "name": "TargetTemperature", "inOutFunction": "ioBroker.State.OnlyACK", "inOutParameters": channel._id + ".tsoll" },
+            { "name": "CurrentTemperature", "inOutFunction": "ioBroker.State.OnlyACK", "inOutParameters": channel._id + ".tist" },
+            { "name": "TemperatureDisplayUnits", "inOutFunction": "const", "inOutParameters": "0" },
+            { "name": "TargetHeatingCoolingState", "inOutFunction": "const", "inOutParameters": 3 },
+            { "name": "CurrentHeatingCoolingState", "inOutFunction": "ioBroker.State.OnlyACK", "inOutParameters": channel._id + ".heatingCoolingState" }
+          );
+          await this.enableHistory(`${channel._id}.tsoll`);
+          await this.enableHistory(`${channel._id}.tist`);
+        } else {
+        }
+        if (accCategory && srvType) {
+          const idPath = channel._id.split(".");
+          const grpName = idPath.slice(0, 2).join(".");
+          const devName = channel.common.name.toString();
+          this.log.debug((0, import_sprintf_js.sprintf)("%-30s %-20s %-50s", "create_fritzdect()", `created ${srvType}`, devName));
+          characteristics.push({
+            "name": "Name",
+            "inOutFunction": "const",
+            "inOutParameters": devName
+          });
+          const manufacturer = await this.getForeignStateAsync(`${channel._id}.manufacturer`);
+          const fwversion = await this.getForeignStateAsync(`${channel._id}.fwversion`);
+          const accConfig = {
+            "groupString": grpName,
+            // used by adapter only
+            "name": devName,
+            // NOTE: yahka adapter uses 'name' to build homekit UUID!
+            "category": accCategory,
+            "model": "" + productname.val,
+            // visible within iOS home app
+            "manufacturer": "" + ((manufacturer == null ? void 0 : manufacturer.val) ? manufacturer.val : "n/a"),
+            // visible within iOS home app
+            "firmware": "" + ((fwversion == null ? void 0 : fwversion.val) ? fwversion.val : "n/a"),
+            // visible within iOS home app
+            "serial": idPath[2] || "",
+            // visible within iOS home app
+            "services": []
+          };
+          accConfigs.push(accConfig);
+          const accService = {
+            "type": srvType,
+            "subType": "",
+            "name": devName,
+            "characteristics": characteristics
+          };
+          accConfig.services.push(accService);
+          this.log.debug((0, import_sprintf_js.sprintf)("%-30s %-20s %-50s %s", "create_fritzdect()", `created ${srvType}`, accConfig.name, devName));
+        }
+      }
+    }
     return accConfigs;
   }
   /**
@@ -666,7 +747,7 @@ function objDiff(oldObj, newObj, path = "", diff = {}) {
   } else if (newObj === void 0) {
     diff[path] = { "old": oldObj };
   } else if (Array.isArray(newObj)) {
-    newObj.forEach((val, idx) => {
+    newObj.forEach((_val, idx) => {
       objDiff(oldObj[idx], newObj[idx], path + "[" + idx + "]", diff);
     });
   } else if (newObj instanceof Object) {
