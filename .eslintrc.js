@@ -11,14 +11,7 @@ module.exports = {
 	],
 	plugins: [],
 	rules: {
-		'indent': 'off',
-		'@typescript-eslint/indent': [
-			'error',
-			'tab',
-			{
-				'SwitchCase': 1
-			}
-		],
+		'indent': [ 'error', 'tab' ],
 		'quotes': [
 			'error',
 			'single',
@@ -58,6 +51,11 @@ module.exports = {
 		'prefer-const': 'error',
 		'no-trailing-spaces': 'error',
 	},
+    ignorePatterns: [
+		"build/",
+		"**/.eslintrc.js",
+		"admin/words.js"
+	],
 	overrides: [
 		{
 			files: ['*.test.ts'],
