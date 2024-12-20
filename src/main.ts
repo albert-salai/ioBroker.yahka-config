@@ -65,7 +65,7 @@ type ZigbeeDev = {
 // AccCatId
 // ~~~~~~~~
 // AccCatId: { "Lightbulb": "5", "Switch": "8", "Thermostat": "9", "Sensor": "10", ... }
-const AccCatId = Object.entries((YahkaIoPkgJson.objects[0] || { 'native': {}}).native).reduce((result: {[index: string]: string}, [key, val]) => {
+const AccCatId = Object.entries((YahkaIoPkgJson.objects[0] || {'native': {}}).native).reduce((result: {[index: string]: string}, [key, val]) => {
 	result[val.text.replace(/ /g,'_')] = key;
 	return result;
 }, {});
