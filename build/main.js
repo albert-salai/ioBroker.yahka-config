@@ -195,7 +195,7 @@ class YahkaConfig extends utils.Adapter {
       const idPath = state._id.split(".");
       if (state.common.type === "boolean" && !["wlan", "wlan24", "wlan50"].includes(idPath.slice(-1)[0] || "")) {
         const accConfig = {
-          "category": AccCatId["Switch"] || "",
+          "category": AccCatId["Switch"],
           "name": state._id,
           // NOTE: yahka adapter uses 'name' to build homekit UUID!
           "manufacturer": idPath.slice(0, 2).join("."),
@@ -231,6 +231,7 @@ class YahkaConfig extends utils.Adapter {
    * @returns
    */
   async create_fritzdect(srcInstId, _yahkaDstApt) {
+    var _a;
     const accConfigs = [];
     const channels = await this.getForeignObjectsAsync(`${srcInstId}.*`, "channel");
     for (const channel of Object.values(channels)) {
@@ -240,7 +241,7 @@ class YahkaConfig extends utils.Adapter {
         let srvType = "";
         const characteristics = [];
         if (productname.val === "FRITZ!DECT Repeater 100") {
-          accCategory = AccCatId["Sensor"] || "";
+          accCategory = AccCatId["Sensor"];
           srvType = "TemperatureSensor";
           characteristics.push({
             "name": "CurrentTemperature",
@@ -248,8 +249,8 @@ class YahkaConfig extends utils.Adapter {
             "inOutParameters": `${channel._id}.celsius`
           });
           await this.enableHistory(`${channel._id}.celsius`);
-        } else if (productname.val === "FRITZ!DECT 200") {
-          accCategory = AccCatId["Switch"] || "";
+        } else if (productname.val === "FRITZ!Smart Energy 200") {
+          accCategory = AccCatId["Switch"];
           srvType = "Switch";
           characteristics.push({
             "name": "On",
@@ -258,7 +259,7 @@ class YahkaConfig extends utils.Adapter {
           });
           await this.enableHistory(`${channel._id}.state`);
         } else if (productname.val === "FRITZ!Smart Thermo 301") {
-          accCategory = AccCatId["Thermostat"] || "";
+          accCategory = AccCatId["Thermostat"];
           srvType = "Thermostat";
           characteristics.push(
             { "name": "TemperatureDisplayUnits", "inOutFunction": "const", "inOutParameters": "0" },
@@ -270,11 +271,16 @@ class YahkaConfig extends utils.Adapter {
           await this.enableHistory(`${channel._id}.tsoll`);
           await this.enableHistory(`${channel._id}.tist`);
         } else {
+          this.log.error((0, import_sprintf_js.sprintf)("%-30s %-20s %-50s", "create_fritzdect()", "unknown", "productname", productname.val));
         }
-        if (accCategory && srvType) {
+        if (!accCategory) {
+          this.log.error((0, import_sprintf_js.sprintf)("%-30s %-20s %-50s %s", "create_fritzdect()", "missing", "accCategory", productname.val));
+        } else if (!srvType) {
+          this.log.error((0, import_sprintf_js.sprintf)("%-30s %-20s %-50s %s", "create_fritzdect()", "missing", "srvType", productname.val));
+        } else {
           const idPath = channel._id.split(".");
           const grpName = idPath.slice(0, 2).join(".");
-          const devName = channel.common.name.toString();
+          const devName = "" + ((_a = await this.getForeignStateAsync(`${channel._id}.name`)) != null ? _a : { "val": "unkonw" }).val;
           characteristics.push({
             "name": "Name",
             "inOutFunction": "const",
@@ -330,7 +336,7 @@ class YahkaConfig extends utils.Adapter {
       let srvType = "";
       const characteristics = [];
       if ((idPath[3] || "").startsWith("Relay")) {
-        accCategory = AccCatId["Switch"] || "";
+        accCategory = AccCatId["Switch"];
         srvType = "Switch";
         characteristics.push({
           "name": "On",
@@ -338,7 +344,7 @@ class YahkaConfig extends utils.Adapter {
           "inOutParameters": `${channel._id}.Switch`
         });
       } else if (idPath[3] === "lights") {
-        accCategory = AccCatId["Lightbulb"] || "";
+        accCategory = AccCatId["Lightbulb"];
         srvType = "Lightbulb";
         characteristics.push({
           "name": "On",
@@ -412,7 +418,7 @@ class YahkaConfig extends utils.Adapter {
         // used by adapter only
       };
       if (objRole === "sensor.contact") {
-        accConfig.category = AccCatId["Sensor"] || "";
+        accConfig.category = AccCatId["Sensor"];
         accConfig.services = [
           {
             "type": "ContactSensor",
@@ -425,7 +431,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "sensor.motion") {
-        accConfig.category = AccCatId["Sensor"] || "";
+        accConfig.category = AccCatId["Sensor"];
         accConfig.services = [
           {
             "type": "MotionSensor",
@@ -438,7 +444,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "sensor.occupancy") {
-        accConfig.category = AccCatId["Sensor"] || "";
+        accConfig.category = AccCatId["Sensor"];
         accConfig.services = [
           {
             "type": "OccupancySensor",
@@ -451,7 +457,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "sensor.leak") {
-        accConfig.category = AccCatId["Sensor"] || "";
+        accConfig.category = AccCatId["Sensor"];
         accConfig.services = [
           {
             "type": "LeakSensor",
@@ -464,7 +470,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "switch") {
-        accConfig.category = AccCatId["Switch"] || "";
+        accConfig.category = AccCatId["Switch"];
         accConfig.services = [
           {
             "type": "Switch",
@@ -477,7 +483,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "switch.light") {
-        accConfig.category = AccCatId["Lightbulb"] || "";
+        accConfig.category = AccCatId["Lightbulb"];
         accConfig.services = [
           {
             "type": "Lightbulb",
@@ -490,7 +496,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "switch.lock.door") {
-        accConfig.category = AccCatId["Door_lock"] || "";
+        accConfig.category = AccCatId["Door_lock"];
         accConfig.services = [
           {
             "type": "LockMechanism",
@@ -504,7 +510,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "switch.garage") {
-        accConfig.category = AccCatId["Garage_door_opener"] || "";
+        accConfig.category = AccCatId["Garage_door_opener"];
         accConfig.services = [
           {
             "type": "GarageDoorOpener",
@@ -519,7 +525,7 @@ class YahkaConfig extends utils.Adapter {
           }
         ];
       } else if (objRole === "switch.fan") {
-        accConfig.category = AccCatId["Fan"] || "";
+        accConfig.category = AccCatId["Fan"];
         accConfig.services = [
           {
             "type": "Fan",
@@ -564,7 +570,7 @@ class YahkaConfig extends utils.Adapter {
         // visible within iOS home app
         "serial": idPath.slice(2).join("."),
         // visible within iOS home app
-        "category": AccCatId["Switch"] || "",
+        "category": AccCatId["Switch"],
         "services": []
       };
       const accService = {
@@ -586,7 +592,7 @@ class YahkaConfig extends utils.Adapter {
       const idBase = idPath.slice(0, -1).join(".");
       const name = targetTempObj.common.name.toString();
       const accConfig = {
-        "category": AccCatId["Thermostat"] || "",
+        "category": AccCatId["Thermostat"],
         "name": targetTempObj._id,
         // NOTE: yahka adapter uses 'name' to build homekit UUID!
         "manufacturer": group,
@@ -785,7 +791,7 @@ class YahkaConfig extends utils.Adapter {
               });
             }
           }
-          accConfig.category = AccCatId["Lightbulb"] || "";
+          accConfig.category = AccCatId["Lightbulb"];
           accConfig.services.push({
             "type": "Lightbulb",
             "subType": "",
@@ -793,7 +799,7 @@ class YahkaConfig extends utils.Adapter {
             "characteristics": characteristics
           });
         } else if (featureNames.includes("contact")) {
-          accConfig.category = AccCatId["Sensor"] || "";
+          accConfig.category = AccCatId["Sensor"];
           for (const feature of features) {
             if (feature.name === "contact") {
               const characteristics = [{
@@ -832,7 +838,7 @@ class YahkaConfig extends utils.Adapter {
             }
           }
         } else if (featureNames.includes("water_leak")) {
-          accConfig.category = AccCatId["Sensor"] || "";
+          accConfig.category = AccCatId["Sensor"];
           for (const feature of features) {
             if (feature.name === "water_leak") {
               const characteristics = [{
@@ -871,7 +877,7 @@ class YahkaConfig extends utils.Adapter {
             }
           }
         } else if (featureNames.includes("occupancy")) {
-          accConfig.category = AccCatId["Sensor"] || "";
+          accConfig.category = AccCatId["Sensor"];
           for (const feature of features) {
             if (feature.name === "occupancy") {
               const characteristics = [{
@@ -910,7 +916,7 @@ class YahkaConfig extends utils.Adapter {
             }
           }
         } else if (featureNames.includes("humidity")) {
-          accConfig.category = AccCatId["Sensor"] || "";
+          accConfig.category = AccCatId["Sensor"];
           for (const feature of features) {
             if (feature.name === "humidity") {
               const characteristics = [{
