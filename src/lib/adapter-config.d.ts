@@ -3,7 +3,7 @@
 
 // Augment the globally declared type ioBroker.AdapterConfig
 declare global {
-	type ConfigMapping = {[index: string]: {[index: string]: boolean}};
+	type ConfigMapping = Record<string, Record<string, boolean>>;
 
 	namespace ioBroker {
 		interface AdapterConfig {

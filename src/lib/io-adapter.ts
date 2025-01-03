@@ -1,0 +1,1 @@
+../../../ioBroker.switchboard-io/src/lib/io-adapter.ts
