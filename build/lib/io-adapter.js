@@ -27,6 +27,7 @@ var import_adapter_core = require("@iobroker/adapter-core");
 var import_async_mutex = require("async-mutex");
 var import_sprintf_js = require("sprintf-js");
 var import_deep_diff = require("deep-diff");
+const MutexTimeoutMs = 1e3 * 5;
 function dateStr(ts = Date.now()) {
   const d = new Date(ts);
   return (0, import_sprintf_js.sprintf)("%02d.%02d.%04d %02d:%02d:%02d", d.getDate(), d.getMonth() + 1, d.getFullYear(), d.getHours(), d.getMinutes(), d.getSeconds());
@@ -51,7 +52,7 @@ class IoAdapter extends import_adapter_core.Adapter {
   // by stateId
   stateObject = {};
   // by stateId
-  mutex = new import_async_mutex.Mutex();
+  mutex = (0, import_async_mutex.withTimeout)(new import_async_mutex.Mutex(), MutexTimeoutMs);
   saveConfig;
   logf = {
     "silly": (_fmt, ..._args) => {
@@ -123,18 +124,16 @@ ${origin}`);
       }
     });
     this.on("stateChange", (stateId, stateChange) => {
-      void this.runExclusive(async () => {
-        if (stateChange) {
-          const { val, ack, ts } = stateChange;
-          if (val === null) {
-            this.logf.warn("%-15s %-15s %-10s %-50s", this.constructor.name, "onChange()", "val null", stateId);
-          } else {
-            await this.onChange(stateId, { val, ack, ts });
-          }
+      if (stateChange) {
+        const { val, ack, ts } = stateChange;
+        if (val === null) {
+          this.logf.warn("%-15s %-15s %-10s %-50s", this.constructor.name, "onChange()", "val null", stateId);
         } else {
-          this.logf.warn("%-15s %-15s %-10s %-50s", this.constructor.name, "onChange()", "deleted", stateId);
+          void this.onChange(stateId, { val, ack, ts });
         }
-      });
+      } else {
+        this.logf.warn("%-15s %-15s %-10s %-50s", this.constructor.name, "onChange()", "deleted", stateId);
+      }
     });
     this.on("unload", async (callback) => {
       var _a;
@@ -170,7 +169,12 @@ ${origin}`);
    * @returns
    */
   async runExclusive(cb) {
-    return this.mutex.runExclusive(cb);
+    try {
+      return await this.mutex.runExclusive(cb);
+    } catch (err) {
+      this.logf.error("%-15s %-15s %-10s after %d ms\n%s", this.constructor.name, "runExclusive()", "timeout", MutexTimeoutMs, new Error("").stack);
+      return cb();
+    }
   }
   /**
    *
