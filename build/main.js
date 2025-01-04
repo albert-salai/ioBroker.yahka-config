@@ -22,7 +22,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 var utils = __toESM(require("@iobroker/adapter-core"));
-var import_util = require("./lib/util");
+var import_io_util = require("./lib/io-util");
 var import_sprintf_js = require("sprintf-js");
 var import_deep_diff = require("deep-diff");
 var import_mqtt = __toESM(require("mqtt"));
@@ -197,7 +197,7 @@ class YahkaConfig extends utils.Adapter {
     var _a;
     const accConfigs = [];
     const stateObjs = await this.getForeignObjectsAsync(`${srcInstId}.states.*`, "state");
-    for (const state of Object.values(stateObjs).sort((0, import_util.sortBy)("_id"))) {
+    for (const state of Object.values(stateObjs).sort((0, import_io_util.sortBy)("_id"))) {
       const idPath = state._id.split(".");
       if (state.common.type === "boolean" && !["wlan", "wlan24", "wlan50"].includes((_a = idPath.slice(-1)[0]) != null ? _a : "")) {
         const accConfig = {
@@ -336,7 +336,7 @@ class YahkaConfig extends utils.Adapter {
     const accConfigs = [];
     const lightChannels = await this.getForeignObjectsAsync(`${srcInstId}.*.lights`, "channel");
     const relayChannels = await this.getForeignObjectsAsync(`${srcInstId}.*.Relay*`, "channel");
-    const channels = Object.values(lightChannels).concat(Object.values(relayChannels)).sort((0, import_util.sortBy)("_id"));
+    const channels = Object.values(lightChannels).concat(Object.values(relayChannels)).sort((0, import_io_util.sortBy)("_id"));
     for (const channel of channels) {
       const idPath = channel._id.split(".");
       const name = typeof channel.common.name === "string" ? channel.common.name : channel.common.name.en;
@@ -405,7 +405,7 @@ class YahkaConfig extends utils.Adapter {
   async create_by_role(srcInstId, _yahkaDstApt) {
     const accConfigs = [];
     const pinObjs = await this.getForeignObjectsAsync(`${srcInstId}.*`, "state");
-    for (const pinObj of Object.values(pinObjs).sort((0, import_util.sortBy)("_id"))) {
+    for (const pinObj of Object.values(pinObjs).sort((0, import_io_util.sortBy)("_id"))) {
       const objId = pinObj._id;
       const idPath = pinObj._id.split(".");
       const objRole = pinObj.common.role;
@@ -595,7 +595,7 @@ class YahkaConfig extends utils.Adapter {
       this.log.debug((0, import_sprintf_js.sprintf)("%-30s %-20s %-50s %s", "create_danfoss()", accService.type, accConfig.name, accService.name));
     }
     const targetTemps = await this.getForeignObjectsAsync(`${srcInstId}.room-*.TargetTemp`, "state");
-    for (const targetTempObj of Object.values(targetTemps).sort((0, import_util.sortBy)("_id"))) {
+    for (const targetTempObj of Object.values(targetTemps).sort((0, import_io_util.sortBy)("_id"))) {
       const idPath = targetTempObj._id.split(".");
       const idBase = idPath.slice(0, -1).join(".");
       const name = typeof targetTempObj.common.name === "string" ? targetTempObj.common.name : targetTempObj.common.name.en;

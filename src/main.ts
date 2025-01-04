@@ -1,5 +1,5 @@
 import * as utils					from '@iobroker/adapter-core';
-import { sortBy }					from './lib/util';
+import { sortBy }					from './lib/io-util';
 import { sprintf }					from 'sprintf-js';
 import { diff as deepDiff }			from 'deep-diff';
 
