@@ -302,7 +302,7 @@ class YahkaConfig extends utils.Adapter {
 					'type': 'Switch', 'subType': '', 'name': accConfig.model,
 					'characteristics': [
 						{ 'name': 'Name',	'inOutFunction': 'const',					'inOutParameters': accConfig.model	},
-						{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': state._id	}
+						{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': state._id		}
 					]
 				};
 				accConfig.services.push(accService);
@@ -601,7 +601,7 @@ class YahkaConfig extends utils.Adapter {
 					{
 						'type': 'LockMechanism', 'subType': '', 'name': objName,
 						'characteristics': [
-							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName												},
+							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName											},
 							{ 'name': 'LockTargetState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId,			'conversionFunction': 'invert'	},
 							{ 'name': 'LockCurrentState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId+'_status',	'conversionFunction': 'invert'	},
 						]
@@ -615,10 +615,10 @@ class YahkaConfig extends utils.Adapter {
 					{
 						'type': 'GarageDoorOpener', 'subType': '', 'name': objName,
 						'characteristics': [
-							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName												},
+							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName											},
 							{ 'name': 'TargetDoorState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId,			'conversionFunction': 'invert'	},
 							{ 'name': 'CurrentDoorState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId+'_status',	'conversionFunction': 'invert'	},
-							{ 'name': 'ObstructionDetected','inOutFunction': 'const',					'inOutParameters': false												},
+							{ 'name': 'ObstructionDetected','inOutFunction': 'const',					'inOutParameters': false											},
 						]
 					}
 				];
@@ -708,7 +708,7 @@ class YahkaConfig extends utils.Adapter {
 			const accService: AccService = {
 				'type': 'Thermostat', 'subType': '', 'name': name,
 				'characteristics': [
-					{ 'name': 'Name',						'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.RoomName'		},
+					{ 'name': 'Name',						'inOutFunction': 'const',					'inOutParameters': name						},
 					{ 'name': 'TargetTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.TargetTemp'		},
 					{ 'name': 'CurrentTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.RoomTemp'		},
 					{ 'name': 'TemperatureDisplayUnits',	'inOutFunction': 'const',					'inOutParameters': '0', 					},
