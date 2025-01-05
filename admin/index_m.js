@@ -79,7 +79,7 @@ async function load(_settings, onChange) {
 	//console.log('load(): instIds: ' + JSON.stringify(instIds,	null, 4));
 
 	// srcIds, dstIds
-	const srcAdapters	= [ 'tr-064', 'fritzdect', 'shelly', 'sonoff', 'openweathermap', 'zigbee2mqtt', 'danfoss-icon', 'switchboard-io', 'rpi-io' ];
+	const srcAdapters	= [ 'tr-064', 'fritzdect', 'shelly', 'sonoff', 'openweathermap', 'zigbee2mqtt', 'danfossicon', 'switchboard-io', 'rpi-io' ];
 	const srcIds		= instIds.filter(instId => srcAdapters.find(name => instId.startsWith(name + '.')));
 	const dstIds		= instIds.filter(instId => instId.startsWith('yahka.'));
 	console.log('load(): srcIds: ' + JSON.stringify(srcIds,	null, 4));

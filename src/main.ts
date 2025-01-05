@@ -178,7 +178,7 @@ class YahkaConfig extends utils.Adapter {
 				const srcInstIds = Object.entries(srcIdsObj).filter(entry => (entry[1])).map(entry => entry[0]).sort();
 				for (const srcInstId of srcInstIds.sort()) {
 					const adapter = srcInstId.split('.')[0];
-					if		(adapter === 'danfoss-icon'	)	{ createdDevs = createdDevs.concat(await this.create_danfoss	(srcInstId, yahkaDst)); }
+					if		(adapter === 'danfossicon'	)	{ createdDevs = createdDevs.concat(await this.create_danfoss	(srcInstId, yahkaDst)); }
 					else if (adapter === 'fritzdect'	)	{ createdDevs = createdDevs.concat(await this.create_fritzdect	(srcInstId, yahkaDst)); }
 					else if (adapter === 'rpi-io'		)	{ createdDevs = createdDevs.concat(await this.create_by_role	(srcInstId, yahkaDst)); }
 					else if (adapter === 'shelly'		)	{ createdDevs = createdDevs.concat(await this.create_shelly		(srcInstId, yahkaDst)); }
@@ -657,12 +657,12 @@ class YahkaConfig extends utils.Adapter {
 	 */
 	private async create_danfoss(srcInstId: string, _yahkaDstApt: ioBroker.Object): Promise<AccConfig[]> {
 		const accConfigs: AccConfig[] = [];
-		const group = srcInstId;										// 'danfoss-icon.0'
+		const group = srcInstId;										// 'danfossicon.0'
 
-		// danfoss-icon HousePause
+		// danfossicon HousePause
 		const housePause = await this.getForeignObjectAsync(`${srcInstId}.House.HousePause`);
 		if (housePause) {
-			const idPath	= housePause._id.split('.');				// [ 'danfoss-icon', '0', 'House', 'HousePause' ]
+			const idPath	= housePause._id.split('.');				// [ 'danfossicon', '0', 'House', 'HousePause' ]
 			const name		= (typeof housePause.common.name === 'string') ? housePause.common.name : housePause.common.name.en;
 
 			const accConfig = {
@@ -689,8 +689,8 @@ class YahkaConfig extends utils.Adapter {
 		// TargetTemp
 		const targetTemps = await this.getForeignObjectsAsync(`${srcInstId}.room-*.TargetTemp`, 'state');
 		for (const targetTempObj of Object.values(targetTemps).sort(sortBy('_id'))) {
-			const idPath	= targetTempObj._id.split('.');				// [ 'danfoss-icon', '0', 'room-01', 'TargetTemp' ]
-			const idBase	= idPath.slice(0, -1).join('.');			//   'danfoss-icon.0.room-01''
+			const idPath	= targetTempObj._id.split('.');				// [ 'danfossicon', '0', 'room-01', 'TargetTemp' ]
+			const idBase	= idPath.slice(0, -1).join('.');			//   'danfossicon.0.room-01''
 			const name		= (typeof targetTempObj.common.name === 'string') ? targetTempObj.common.name : targetTempObj.common.name.en;
 
 			const accConfig = {
@@ -708,7 +708,7 @@ class YahkaConfig extends utils.Adapter {
 			const accService: AccService = {
 				'type': 'Thermostat', 'subType': '', 'name': name,
 				'characteristics': [
-					{ 'name': 'Name',						'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': name						},
+					{ 'name': 'Name',						'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.RoomName'		},
 					{ 'name': 'TargetTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.TargetTemp'		},
 					{ 'name': 'CurrentTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.RoomTemp'		},
 					{ 'name': 'TemperatureDisplayUnits',	'inOutFunction': 'const',					'inOutParameters': '0', 					},
