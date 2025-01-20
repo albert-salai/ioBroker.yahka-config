@@ -1,9 +1,9 @@
 import * as utils					from '@iobroker/adapter-core';
-import { sortBy }					from './lib/io-util';
-import { sprintf }					from 'sprintf-js';
-import { diff as deepDiff }			from 'deep-diff';
-
 import   mqtt 						from 'mqtt';
+import { diff as deepDiff }			from 'deep-diff';
+import { sprintf }					from 'sprintf-js';
+
+// mqtt used to get ZigbeeDevice list
 // state roles:						see https://www.iobroker.net/#en/documentation/dev/stateroles.md
 // homekit services:				see https://github.com/homebridge/HAP-NodeJS/blob/latest/src/lib/definitions/ServiceDefinitions.ts
 // homekit characteristics:			see https://github.com/homebridge/HAP-NodeJS/blob/latest/src/lib/definitions/CharacteristicDefinitions.ts
@@ -151,7 +151,6 @@ class YahkaConfig extends utils.Adapter {
 	 */
 	private async onReady(): Promise<void> {
 		const mapping = this.config.mapping;
-		this.log.info(sprintf('%-31s %-20s %-50s', 'onReady()', 'mapping', '\n'+JSON.stringify(mapping, null, 4)));
 
 		// historyId
 		const systemConfig = await this.getForeignObjectAsync('system.config');
@@ -168,6 +167,10 @@ class YahkaConfig extends utils.Adapter {
 				delete mapping[dstId];
 
 			} else {
+				for (const [ srcInstId, enabled ] of Object.entries(srcIdsObj)) {
+					this.log.info(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, srcInstId, (enabled ? 'enabled' : 'skipped')));
+				}
+
 				// oldDevs		-		yahka adapter uses 'name' to build homekit UUID
 				const native = yahkaDst.native as Record<string, unknown>;
 				const bridge = (native['bridge'] ? native['bridge'] : {}) as { devices?: AccConfig[] };
@@ -175,21 +178,22 @@ class YahkaConfig extends utils.Adapter {
 
 				// createdDevs
 				let createdDevs: AccConfig[] = [];
-				const srcInstIds = Object.entries(srcIdsObj).filter(entry => (entry[1])).map(entry => entry[0]).sort();
-				for (const srcInstId of srcInstIds.sort()) {
-					const adapter = srcInstId.split('.')[0];
-					if		(adapter === 'danfossicon'	)	{ createdDevs = createdDevs.concat(await this.create_danfoss	(srcInstId, yahkaDst)); }
-					else if (adapter === 'fritzdect'	)	{ createdDevs = createdDevs.concat(await this.create_fritzdect	(srcInstId, yahkaDst)); }
-					else if (adapter === 'rpi-io'		)	{ createdDevs = createdDevs.concat(await this.create_by_role	(srcInstId, yahkaDst)); }
-					else if (adapter === 'shelly'		)	{ createdDevs = createdDevs.concat(await this.create_shelly		(srcInstId, yahkaDst)); }
-					else if (adapter === 'switchboard-io')	{ createdDevs = createdDevs.concat(await this.create_by_role	(srcInstId, yahkaDst)); }
-					else if (adapter === 'tr-064'		)	{ createdDevs = createdDevs.concat(await this.create_tr064		(srcInstId, yahkaDst)); }
-					else if (adapter === 'zigbee2mqtt'	)	{ createdDevs = createdDevs.concat(await this.create_zigbee2mqtt(srcInstId, yahkaDst)); }
+
+				for (const [ srcInstId, enabled ] of Object.entries(srcIdsObj)) {
+					if (enabled) {
+						const adapter = srcInstId.split('.')[0];
+						if		(adapter === 'danfossicon'	)	{ createdDevs = createdDevs.concat(await this.create_danfoss	(srcInstId, yahkaDst)); }
+						else if (adapter === 'fritzdect'	)	{ createdDevs = createdDevs.concat(await this.create_fritzdect	(srcInstId, yahkaDst)); }
+						else if (adapter === 'rpi-io'		)	{ createdDevs = createdDevs.concat(await this.create_by_role	(srcInstId, yahkaDst)); }
+						else if (adapter === 'shelly'		)	{ createdDevs = createdDevs.concat(await this.create_shelly		(srcInstId, yahkaDst)); }
+						else if (adapter === 'switchboard-io')	{ createdDevs = createdDevs.concat(await this.create_by_role	(srcInstId, yahkaDst)); }
+						else if (adapter === 'tr-064'		)	{ createdDevs = createdDevs.concat(await this.create_tr064		(srcInstId, yahkaDst)); }
+						else if (adapter === 'zigbee2mqtt'	)	{ createdDevs = createdDevs.concat(await this.create_zigbee2mqtt(srcInstId, yahkaDst)); }
+					}
 				}
 
 				// enable all characteristics
 				for (const createdDev of createdDevs) {
-
 					// defaults
 					Object.assign(createdDev, Object.assign({
 						'configType':		'customdevice',
@@ -236,23 +240,15 @@ class YahkaConfig extends utils.Adapter {
 				//this.log.info(sprintf('%-31s %-20s\n%s', 'createYahkaConfig()', 'oldDevs', JSON.stringify(oldDevs, null, 4)));
 				//this.log.info(sprintf('%-31s %-20s\n%s', 'createYahkaConfig()', 'newDevs', JSON.stringify(newDevs, null, 4)));
 
-				// get diffs between oldDevs and newDevs
+				// log diffs between oldDevs and newDevs
 				const diffs = deepDiff(oldDevs, newDevs);
 				for (const diff of (diffs ?? [])) {
 					if (diff.path) {
 						const pathStr = diff.path.map((val) => (typeof val === 'number' ? `[${String(val)}]` : `.${String(val)}`)).join('');
-						if (diff.kind === 'N') {
-							this.log.info(sprintf('%-31s %-20s %-30s %s', 'createYahkaConfig()', 'added', pathStr, JSON.stringify(diff.rhs)));
-
-						} else if (diff.kind === 'D') {
-							this.log.info(sprintf('%-31s %-20s %-30s %s', 'createYahkaConfig()', 'deleted', pathStr, JSON.stringify(diff.lhs)));
-
-						} else if (diff.kind === 'E') {
-							this.log.info(sprintf('%-31s %-20s %-30s %-20s --> %-10s', 'createYahkaConfig()', 'edited', pathStr, JSON.stringify(diff.lhs), JSON.stringify(diff.rhs)));
-
-						} else { // if (diff.kind === 'A')
-							this.log.info(sprintf('%-31s %-20s %-30s %s', 'createYahkaConfig()', 'changed', pathStr, JSON.stringify(diff.item)));
-						}
+						if		(diff.kind === 'N')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'added',   pathStr, JSON.stringify(diff.rhs))); }
+						else if (diff.kind === 'D')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'deleted', pathStr, JSON.stringify(diff.lhs))); }
+						else if (diff.kind === 'E')		{ this.log.info(sprintf('%-31s %-20s %-30s %-20s --> %-10s',	'createYahkaConfig()', 'edited',  pathStr, JSON.stringify(diff.lhs), JSON.stringify(diff.rhs))); }
+						else /*  diff.kind === 'A' */	{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'changed', pathStr, JSON.stringify(diff.item))); }
 					}
 				}
 
@@ -1021,28 +1017,34 @@ class YahkaConfig extends utils.Adapter {
 	 */
 	private async enableHistory(stateId: string): Promise<void> {
 		if (this.historyId) {
-			const stateObj = await this.getForeignObjectAsync(stateId);
-			if (stateObj?.type === 'state') {
-				const {type, common, native } = stateObj;
-				common.custom = common.custom  ??  {};
-				common.custom[this.historyId] = Object.assign({
-					// defaults
-					'enabled':					true,
-					'changesRelogInterval':		0,
-					'retention':				0,
-					'changesOnly':				false,
-				},
-				common.custom[this.historyId] as unknown,
-				{
-					// overrides
-					'changesOnly':				false,
-				});
-
-				//this.log.debug(sprintf('%-30s %-20s %-50s %s', 'enableHistory()', 'common', stateId, JSON.stringify(common, null, 4)));
-				await this.setForeignObject(stateId, { type, common, native });
+			const oldObj = await this.getForeignObjectAsync(stateId);
+			if (oldObj?.type !== 'state') {
+				this.log.warn(sprintf('%-31s %-20s %-50s', 'enableHistory()', 'missing', stateId));
 
 			} else {
-				this.log.warn(sprintf('%-31s %-20s %-50s', 'enableHistory()', 'missing', stateId));
+				const newObj		= JSON.parse(JSON.stringify(oldObj)) as typeof oldObj;
+				const newCustom		= (newObj.common.custom			?? {});
+				const newHistory	= (newCustom[this.historyId]	?? {}) as Record<string, unknown>;
+				newHistory['enabled'] = true;
+
+				// log diffs between oldDevs and newDevs
+				const diffs = deepDiff(oldObj, newObj) ?? [];
+				if (diffs.length > 0) {
+					// debug log
+					for (const diff of diffs) {
+						if (diff.path) {
+							const pathStr = diff.path.map((val) => (typeof val === 'number' ? `[${String(val)}]` : `.${String(val)}`)).join('');
+							if		(diff.kind === 'N')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'added',   pathStr, JSON.stringify(diff.rhs))); }
+							else if (diff.kind === 'D')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'deleted', pathStr, JSON.stringify(diff.lhs))); }
+							else if (diff.kind === 'E')		{ this.log.info(sprintf('%-31s %-20s %-30s %-20s --> %-10s',	'createYahkaConfig()', 'edited',  pathStr, JSON.stringify(diff.lhs), JSON.stringify(diff.rhs))); }
+							else /*  diff.kind === 'A' */	{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'changed', pathStr, JSON.stringify(diff.item))); }
+						}
+					}
+
+					// write newObj
+					//this.log.debug(sprintf('%-30s %-20s %-50s %s', 'enableHistory()', 'common', stateId, JSON.stringify(common, null, 4)));
+					await this.setForeignObject(stateId, newObj);
+				}
 			}
 		}
 	}
@@ -1055,6 +1057,12 @@ class YahkaConfig extends utils.Adapter {
 	}
 }
 
+
+
+// sortBy(key)
+function sortBy<T>(key: keyof T): ((a: T, b: T) => number) {
+	return (a: T, b: T) => (a[key] > b[key]) ? +1 : ((a[key] < b[key]) ? -1 : 0);
+}
 
 
 
