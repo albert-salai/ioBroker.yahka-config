@@ -23,7 +23,9 @@ interface AccService {
 	type:					string,
 	subType:				string,
 	name:					string,
-	characteristics:		SrvCharacteristic[]
+	characteristics:		SrvCharacteristic[],
+	isPrimary?:				boolean,
+	linkTo?:				string,			// primary service name
 }
 
 // AccConfig
@@ -186,9 +188,9 @@ class YahkaConfig extends utils.Adapter {
 						else if (adapter === 'fritzdect'	)	{ createdDevs = createdDevs.concat(await this.create_fritzdect	(srcInstId, yahkaDst)); }
 						else if (adapter === 'rpi-io'		)	{ createdDevs = createdDevs.concat(await this.create_by_role	(srcInstId, yahkaDst)); }
 						else if (adapter === 'shelly'		)	{ createdDevs = createdDevs.concat(await this.create_shelly		(srcInstId, yahkaDst)); }
-						else if (adapter === 'switchboard-io')	{ createdDevs = createdDevs.concat(await this.create_by_role	(srcInstId, yahkaDst)); }
 						else if (adapter === 'tr-064'		)	{ createdDevs = createdDevs.concat(await this.create_tr064		(srcInstId, yahkaDst)); }
 						else if (adapter === 'zigbee2mqtt'	)	{ createdDevs = createdDevs.concat(await this.create_zigbee2mqtt(srcInstId, yahkaDst)); }
+						else if (adapter === 'switchboard-io')	{ createdDevs = createdDevs.concat(await this.create_by_role	(srcInstId, yahkaDst)); }
 					}
 				}
 
@@ -237,8 +239,8 @@ class YahkaConfig extends utils.Adapter {
 						this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'added', createdDev.name));
 					}
 				}
-				//this.log.info(sprintf('%-31s %-20s\n%s', 'createYahkaConfig()', 'oldDevs', JSON.stringify(oldDevs, null, 4)));
-				//this.log.info(sprintf('%-31s %-20s\n%s', 'createYahkaConfig()', 'newDevs', JSON.stringify(newDevs, null, 4)));
+				//this.log.debug(sprintf('%-31s %-20s\n%s', 'createYahkaConfig()', 'oldDevs', JSON.stringify(oldDevs, null, 4)));
+				//this.log.debug(sprintf('%-31s %-20s\n%s', 'createYahkaConfig()', 'newDevs', JSON.stringify(newDevs, null, 4)));
 
 				// log diffs between oldDevs and newDevs
 				const diffs = deepDiff(oldDevs, newDevs);
@@ -752,6 +754,8 @@ class YahkaConfig extends utils.Adapter {
 			const ieeeAdr	= idPath.slice(-1)[0];
 			const zigbeeDev	= zigbeeDevs.find(dev => (dev.ieee_address === ieeeAdr));
 			if (zigbeeDev) {
+				//this.log.debug(sprintf('%-30s %-20s %-50s\n%s', 'create_zigbee2mqtt()', 'zigbeeDev', '', JSON.stringify(zigbeeDev, null, 4)));
+
 				// zigbeeDev
 				const { ieee_address, network_address, supported, friendly_name, disabled, definition, software_build_id, model_id, interviewing, interview_completed, manufacturer, endpoints } = zigbeeDev;
 				if (typeof ieee_address			!== 'string'	) { throw new Error('device ieee_address must be string'			); }
@@ -814,8 +818,9 @@ class YahkaConfig extends utils.Adapter {
 				const featureNames	= features.map(feature => feature.name);
 				const typedFeatures	= exposes.filter(expose => 'features' in expose);
 				const exposedLight	= typedFeatures.find(expose => (expose.type === 'light'));
+				//this.log.debug(sprintf('%-30s %-20s %-50s %s\n%s', 'create_zigbee2mqtt()', `featureNames`, iobDev._id, zigbeeDev.friendly_name, JSON.stringify(featureNames, null, 4)));
 
-				// Lightbulb
+				// Service Lightbulb
 				if (exposedLight) {
 					const characteristics: SrvCharacteristic[] = [];
 					for (const feature of exposedLight.features  ??  []) {
@@ -846,7 +851,7 @@ class YahkaConfig extends utils.Adapter {
 						'type': 'Lightbulb', 'subType': '', 'name': devName, 'characteristics':	characteristics
 					});
 
- 				// Sensor ContactSensor
+ 				// Service ContactSensor (+ Battery)
 				} else if (featureNames.includes('contact')) {
 					accConfig.category = AccCatId.Sensor;
 
@@ -857,7 +862,8 @@ class YahkaConfig extends utils.Adapter {
 								'name': 'ContactSensorState', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters':	`${iobDev._id}.opened`
 							}];
 							accConfig.services.push({
-								'type': 'ContactSensor', 'subType': '', 'name': devName, 'characteristics':	characteristics
+								'type': 'ContactSensor', 'subType': '', 'name': devName, 'characteristics':	characteristics,
+								'isPrimary': true
 							});
 						}
 
@@ -872,12 +878,13 @@ class YahkaConfig extends utils.Adapter {
 								}
 							];
 							accConfig.services.push({
-								'type': 'Battery', 'subType': '', 'name': devName, 'characteristics': characteristics
+								'type': 'Battery', 'subType': '', 'name': `${devName} Batterie`, 'characteristics': characteristics,
+								'linkTo': devName
 							});
 						}
 					}
 
-				// Sensor LeakSensor
+				// Service LeakSensor (+ Battery)
 				} else if (featureNames.includes('water_leak')) {
 					accConfig.category = AccCatId.Sensor;
 
@@ -888,7 +895,8 @@ class YahkaConfig extends utils.Adapter {
 								'name': 'LeakDetected', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.detected`
 							}];
 							accConfig.services.push({
-								'type': 'LeakSensor', 'subType': '', 'name': devName, 'characteristics': characteristics
+								'type': 'LeakSensor', 'subType': '', 'name': devName, 'characteristics': characteristics,
+								'isPrimary': true
 							});
 						}
 
@@ -903,23 +911,38 @@ class YahkaConfig extends utils.Adapter {
 								}
 							];
 							accConfig.services.push({
-								'type': 'Battery', 'subType': '', 'name': devName, 'characteristics': characteristics
+								'type': 'Battery', 'subType': '', 'name': `${devName} Batterie`, 'characteristics': characteristics,
+								'linkTo': devName
 							});
 						}
 					}
 
-				// Sensor LeakSensor
+				// Service OccupancySensor (+ LightSensor + Battery)
 				} else if (featureNames.includes('occupancy')) {
 					accConfig.category = AccCatId.Sensor;
 
 					for (const feature of features) {
-						// Sensor LeakSensor
+						// Sensor OccupancySensor
 						if (feature.name === 'occupancy') {
 							const characteristics: SrvCharacteristic[] = [{
 								'name': 'OccupancyDetected', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.occupancy`
 							}];
 							accConfig.services.push({
-								'type': 'OccupancySensor', 'subType': '', 'name': devName, 'characteristics': characteristics
+								'type': 'OccupancySensor', 'subType': '', 'name': devName, 'characteristics': characteristics,
+								'isPrimary': true
+							});
+						}
+
+						// Sensor LightSensor
+						if (feature.name === 'illuminance') {
+							const characteristics: SrvCharacteristic[] = [
+								{
+									'name': 'CurrentAmbientLightLevel', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.illuminance_raw`
+								}
+							];
+							accConfig.services.push({
+								'type': 'LightSensor', 'subType': '', 'name': `${devName} Helligkeit`, 'characteristics': characteristics,
+								'linkTo': devName
 							});
 						}
 
@@ -934,12 +957,13 @@ class YahkaConfig extends utils.Adapter {
 								}
 							];
 							accConfig.services.push({
-								'type': 'Battery', 'subType': '', 'name': devName, 'characteristics': characteristics
+								'type': 'Battery', 'subType': '', 'name': `${devName} Batterie`, 'characteristics': characteristics,
+								'linkTo': devName
 							});
 						}
 					}
 
-				// Sensor humidity (and temperature)
+				// Service HumiditySensor (+ TemperatureSensor + Battery)
 				} else if (featureNames.includes('humidity')) {
 					accConfig.category = AccCatId.Sensor;
 
@@ -950,7 +974,8 @@ class YahkaConfig extends utils.Adapter {
 								'name': 'CurrentRelativeHumidity', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.humidity`
 							}];
 							accConfig.services.push({
-								'type': 'HumiditySensor', 'subType': '', 'name': devName, 'characteristics': characteristics
+								'type': 'HumiditySensor', 'subType': '', 'name': devName, 'characteristics': characteristics,
+								'isPrimary': true
 							});
 						}
 
@@ -960,7 +985,8 @@ class YahkaConfig extends utils.Adapter {
 								'name': 'CurrentTemperature', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.temperature`
 							}];
 							accConfig.services.push({
-								'type': 'TemperatureSensor', 'subType': '', 'name': devName, 'characteristics': characteristics
+								'type': 'TemperatureSensor', 'subType': '', 'name': `${devName} Temperatur`, 'characteristics': characteristics,
+								'linkTo': devName
 							});
 						}
 
@@ -975,19 +1001,16 @@ class YahkaConfig extends utils.Adapter {
 								}
 							];
 							accConfig.services.push({
-								'type': 'Battery', 'subType': '', 'name': devName, 'characteristics': characteristics
+								'type': 'Battery', 'subType': '', 'name': `${devName} Batterie`, 'characteristics': characteristics,
+								'linkTo': devName
 							});
 						}
 					}
 				}
 
 				// enable history
-				//this.log.debug(sprintf('%-30s %-20s %-50s %s', 'create_zigbee2mqtt()', `featureNames`, iobDev._id, JSON.stringify(featureNames, null, 4)));
-				for (const featureName of [ 'linkquality', 'opened', 'detected', 'battery', 'battery_low', 'device_temperature', 'voltage' ]) {
-					if (featureNames.includes(featureName)) {
-						const stateName = (featureName === 'linkquality' ? 'link_quality' : featureName)
-						await this.enableHistory(`${iobDev._id}.${stateName}`);
-					}
+				if (featureNames.includes('linkquality')) {
+					await this.enableHistory(`${iobDev._id}.link_quality`);
 				}
 				await this.enableHistory(`${iobDev._id}.available`);
 
@@ -996,7 +1019,7 @@ class YahkaConfig extends utils.Adapter {
 					// add Name characteristic to every service
 					for (const accService of accConfig.services) {
 						accService.characteristics.push({
-							'name': 'Name', 'inOutFunction': 'const', 'inOutParameters': devName
+							'name': 'Name', 'inOutFunction': 'const', 'inOutParameters': accService.name
 						});
 						this.log.debug(sprintf('%-30s %-20s %-50s %s', 'create_zigbee2mqtt()', accService.type, accConfig.name, accService.name));
 					}
