@@ -51,13 +51,13 @@ interface ZigbeeFeature {
 	name:					string,
 	type:					'binary' | 'numeric' | 'enum' | 'composite',
 	features?:				ZigbeeFeature[],
-};
+}
 
 // ZigbeeFeatures
 interface ZigbeeFeatures {
 	type:					'light' | 'composite';		// | 'switch' | 'lock' | 'list' | 'text' | 'cover' | 'fan' | 'climate',
 	features:				ZigbeeFeature[],
-};
+}
 
 // ZigbeeDevice
 //		see https://github.com/Koenkk/zigbee2mqtt/blob/master/lib/extension/bridge.ts#L812
@@ -85,7 +85,7 @@ interface ZigbeeDevice {
 	interview_completed:	boolean,
 	manufacturer:			string,
 	endpoints:				Record<string, unknown>[],
-};
+}
 
 
 // ~~~~~~~~
@@ -175,7 +175,7 @@ class YahkaConfig extends utils.Adapter {
 
 				// oldDevs		-		yahka adapter uses 'name' to build homekit UUID
 				const native = yahkaDst.native as Record<string, unknown>;
-				const bridge = (native['bridge'] ? native['bridge'] : {}) as { devices?: AccConfig[] };
+				const bridge = (native['bridge'] ?? {}) as { devices?: AccConfig[] };
 				const oldDevs: AccConfig[] = bridge.devices ?? [];
 
 				// createdDevs
@@ -851,7 +851,7 @@ class YahkaConfig extends utils.Adapter {
 						'type': 'Lightbulb', 'subType': '', 'name': devName, 'characteristics':	characteristics
 					});
 
- 				// Service ContactSensor (+ Battery)
+				// Service ContactSensor (+ Battery)
 				} else if (featureNames.includes('contact')) {
 					accConfig.category = AccCatId.Sensor;
 
@@ -1084,7 +1084,7 @@ class YahkaConfig extends utils.Adapter {
 
 // sortBy(key)
 function sortBy<T>(key: keyof T): ((a: T, b: T) => number) {
-	return (a: T, b: T) => (a[key] > b[key]) ? +1 : ((a[key] < b[key]) ? -1 : 0);
+	return (a: T, b: T) => (a[key] > b[key]) ? 1 : ((a[key] < b[key]) ? -1 : 0);
 }
 
 
