@@ -1,0 +1,38 @@
+{
+	"adapterName": "yahka-config",
+	"title": "yahka-config",
+	"expert": "yes",
+	"features": [
+		"adapter"
+	],
+	"startMode": "daemon",
+	"connectionType": "local",
+	"dataSource": "poll",
+	"language": "TypeScript",
+	"nodeVersion": "18",
+	"indentation": "Tab",
+	"quotes": "single",
+	"es6class": "yes",
+	"authorName": "Albert Salai",
+	"authorGithub": "albert-salai",
+	"authorEmail": "albert2013@salai.de",
+	"gitRemoteProtocol": "SSH",
+	"gitCommit": "yes",
+	"defaultBranch": "main",
+	"license": "MIT License",
+	"dependabot": "yes",
+	"description": "yahka-config",
+	"keywords": [],
+	"contributors": [],
+	"replay": "/dev/fd/63",
+	"adminFeatures": [],
+	"type": "general",
+	"connectionIndicator": "yes",
+	"adminUi": "html",
+	"tools": [
+		"ESLint"
+	],
+	"i18n": "JSON",
+	"releaseScript": "yes",
+	"creatorVersion": "2.5.0"
+}
