@@ -138,12 +138,8 @@ const AccCatId = {
 class YahkaConfig extends utils.Adapter {
 	private historyId = '';
 
-	// CONSTRUCTOR
-	public constructor(options: Partial<utils.AdapterOptions> = {}) {
-		super({
-			...options,
-			name: 'yahka-config',
-		});
+	public constructor(compactOptions?: { logLevel: string; compactInstance: number; compact: true }) {
+		super({ 'name': 'yahka-config', ...compactOptions });
 		this.on('ready',  this.onReady .bind(this));
 		this.on('unload', this.onUnload.bind(this));
 	}
@@ -1090,9 +1086,11 @@ function sortBy<T>(key: keyof T): ((a: T, b: T) => number) {
 
 
 if (require.main !== module) {
-	// Export the constructor in compact mode
-	module.exports = (options: Partial<utils.AdapterOptions> | undefined) => new YahkaConfig(options);
+	module.exports = (compactOptions: {		// compact mode: host calls this factory instead of spawning a process
+		logLevel:			string;
+		compactInstance:	number;
+		compact:			true
+	}) => new YahkaConfig(compactOptions);
 } else {
-	// otherwise start the instance directly
-	(() => new YahkaConfig())();
+	(() => new YahkaConfig())();			// standalone process: start directly
 }
