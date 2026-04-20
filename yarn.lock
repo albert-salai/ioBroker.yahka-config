@@ -501,10 +501,10 @@
     sinon "^21.0.0"
     sinon-chai "^3.7.0"
 
-"@iobroker/types@^7.0.7":
-  version "7.0.7"
-  resolved "https://registry.yarnpkg.com/@iobroker/types/-/types-7.0.7.tgz#4a342ff5e6c958a1f84ce29fb72d11548ace1275"
-  integrity sha512-1pOAy/dKM5LbMToN8C18vJZNrczekwP+kibkj80bBt4dUJmhT/e0F0A2INfgwo73OE3luVxOMcQgnF0NH8MZkA==
+"@iobroker/types@^7.1.1":
+  version "7.1.1"
+  resolved "https://registry.yarnpkg.com/@iobroker/types/-/types-7.1.1.tgz#6431677065915ef002b3cff653dab4f1a1e15968"
+  integrity sha512-M4gfaJL2jaW12qjMzBg65wcR/9bzqpjxRr01NAdXhkYXVVCORvrYE9r8dnLeWpX5miBdT+tjBJD68wPEA03CZQ==
 
 "@isaacs/balanced-match@^4.0.1":
   version "4.0.1"
