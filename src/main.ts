@@ -49,7 +49,7 @@ interface ZigbeeFeature {
 	description?:			string,
 	label:					string,
 	name:					string,
-	type:					'binary' | 'numeric' | 'enum' | 'composite',
+	type:					'binary' | 'numeric' | 'enum' | 'composite' | 'text' | 'list',
 	features?:				ZigbeeFeature[],
 }
 
@@ -781,7 +781,7 @@ class YahkaConfig extends utils.Adapter {
 					if (typeof access		!== 'number') { throw new Error('feature access must be number'		); }
 					if (typeof label		!== 'string') { throw new Error('feature label must be string'		); }
 					if (typeof name			!== 'string') { throw new Error('feature name must be string'		); }
-					if (! [ 'binary', 'numeric', 'enum', 'composite' ].includes(type)	) { throw new Error(`invalid feature type ${type}`		); }
+					if (! [ 'binary', 'numeric', 'enum', 'composite', 'text', 'list' ].includes(type)	) { throw new Error(`invalid feature type ${type}`		); }
 				};
 				for (const expose of exposes) {
 					if ([ 'light', 'composite' ].includes(expose.type)  &&  Array.isArray(expose.features)) {
