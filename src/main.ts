@@ -933,7 +933,7 @@ class YahkaConfig extends utils.Adapter {
 						if (feature.name === 'illuminance') {
 							const characteristics: SrvCharacteristic[] = [
 								{
-									'name': 'CurrentAmbientLightLevel', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.illuminance_raw`
+									'name': 'CurrentAmbientLightLevel', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.illuminance`
 								}
 							];
 							accConfig.services.push({
