@@ -36,8 +36,7 @@ jobs:
           # install-command: 'npm install'
           type-checking: true
           lint: true
-          # No test/ scaffolding is set up for this adapter
-          test-command: 'false'
+          test-command: 'npm test'
 
   # Runs adapter tests on all supported node versions and OSes
   adapter-tests:
