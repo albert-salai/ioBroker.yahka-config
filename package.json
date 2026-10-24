@@ -64,7 +64,8 @@
 		"check": "tsc --noEmit",
 		"lint": "eslint",
 		"translate": "translate-adapter",
-		"release": "release-script"
+		"release": "release-script",
+		"test": "tsc -p tsconfig.test.json && node --test build-test/test/*.test.js"
 	},
 	"bugs": {
 		"url": "https://github.com/albert-salai/ioBroker.yahka-config/issues"

@@ -1,0 +1,514 @@
+{
+ "objects": {
+  "rpi-io.0.pin.a": {
+   "_id": "rpi-io.0.pin.a",
+   "type": "state",
+   "common": {
+    "name": "Haustür",
+    "role": "sensor.contact"
+   }
+  },
+  "rpi-io.0.pin.b": {
+   "_id": "rpi-io.0.pin.b",
+   "type": "state",
+   "common": {
+    "name": {
+     "en": "Motion",
+     "de": "Bewegung"
+    },
+    "role": "sensor.motion"
+   }
+  },
+  "rpi-io.0.pin.c": {
+   "_id": "rpi-io.0.pin.c",
+   "type": "state",
+   "common": {
+    "name": "Occ",
+    "role": "sensor.occupancy"
+   }
+  },
+  "rpi-io.0.pin.d": {
+   "_id": "rpi-io.0.pin.d",
+   "type": "state",
+   "common": {
+    "name": "Leak",
+    "role": "sensor.leak"
+   }
+  },
+  "rpi-io.0.pin.e": {
+   "_id": "rpi-io.0.pin.e",
+   "type": "state",
+   "common": {
+    "name": "Sw",
+    "role": "switch"
+   }
+  },
+  "rpi-io.0.pin.f": {
+   "_id": "rpi-io.0.pin.f",
+   "type": "state",
+   "common": {
+    "name": "Light",
+    "role": "switch.light"
+   }
+  },
+  "rpi-io.0.pin.g": {
+   "_id": "rpi-io.0.pin.g",
+   "type": "state",
+   "common": {
+    "name": "Door",
+    "role": "switch.lock.door"
+   }
+  },
+  "rpi-io.0.pin.h": {
+   "_id": "rpi-io.0.pin.h",
+   "type": "state",
+   "common": {
+    "name": "Garage",
+    "role": "switch.garage"
+   }
+  },
+  "rpi-io.0.pin.i": {
+   "_id": "rpi-io.0.pin.i",
+   "type": "state",
+   "common": {
+    "name": "Fan",
+    "role": "switch.fan"
+   }
+  },
+  "rpi-io.0.pin.j": {
+   "_id": "rpi-io.0.pin.j",
+   "type": "state",
+   "common": {
+    "name": "Other",
+    "role": "value"
+   }
+  },
+  "rpi-io.0.pin.k": {
+   "_id": "rpi-io.0.pin.k",
+   "type": "state",
+   "common": {
+    "name": {
+     "de": "nur de"
+    },
+    "role": "switch"
+   }
+  },
+  "fritzdect.0.0.DECT_1": {
+   "_id": "fritzdect.0.0.DECT_1",
+   "type": "channel",
+   "common": {
+    "name": "c1"
+   }
+  },
+  "fritzdect.0.0.DECT_2": {
+   "_id": "fritzdect.0.0.DECT_2",
+   "type": "channel",
+   "common": {
+    "name": "c2"
+   }
+  },
+  "fritzdect.0.0.DECT_3": {
+   "_id": "fritzdect.0.0.DECT_3",
+   "type": "channel",
+   "common": {
+    "name": "c3"
+   }
+  },
+  "fritzdect.0.0.DECT_4": {
+   "_id": "fritzdect.0.0.DECT_4",
+   "type": "channel",
+   "common": {
+    "name": "c4"
+   }
+  },
+  "fritzdect.0.0.DECT_5": {
+   "_id": "fritzdect.0.0.DECT_5",
+   "type": "channel",
+   "common": {
+    "name": "c5"
+   }
+  },
+  "shelly.0.SHDM-2#94B97E16BE61#1.lights": {
+   "_id": "shelly.0.SHDM-2#94B97E16BE61#1.lights",
+   "type": "channel",
+   "common": {
+    "name": "Dimmer"
+   }
+  },
+  "shelly.0.SHPLG-S#6A0761#1.Relay0": {
+   "_id": "shelly.0.SHPLG-S#6A0761#1.Relay0",
+   "type": "channel",
+   "common": {
+    "name": {
+     "en": "Plug"
+    }
+   }
+  },
+  "tr-064.0.states.wps": {
+   "_id": "tr-064.0.states.wps",
+   "type": "state",
+   "common": {
+    "name": "WPS",
+    "type": "boolean"
+   }
+  },
+  "tr-064.0.states.wlan": {
+   "_id": "tr-064.0.states.wlan",
+   "type": "state",
+   "common": {
+    "name": "WLAN",
+    "type": "boolean"
+   }
+  },
+  "tr-064.0.states.num": {
+   "_id": "tr-064.0.states.num",
+   "type": "state",
+   "common": {
+    "name": "Num",
+    "type": "number"
+   }
+  },
+  "tr-064.0.states.dnd": {
+   "_id": "tr-064.0.states.dnd",
+   "type": "state",
+   "common": {
+    "name": {
+     "en": "DND"
+    },
+    "type": "boolean"
+   }
+  },
+  "danfossicon.0.House.HousePause": {
+   "_id": "danfossicon.0.House.HousePause",
+   "type": "state",
+   "common": {
+    "name": "Pause"
+   }
+  },
+  "danfossicon.0.room-01.TargetTemp": {
+   "_id": "danfossicon.0.room-01.TargetTemp",
+   "type": "state",
+   "common": {
+    "name": "Wohnzimmer"
+   }
+  },
+  "danfossicon.0.room-02.TargetTemp": {
+   "_id": "danfossicon.0.room-02.TargetTemp",
+   "type": "state",
+   "common": {
+    "name": "Bad"
+   }
+  },
+  "zigbee2mqtt.0.0xa1": {
+   "_id": "zigbee2mqtt.0.0xa1",
+   "type": "device",
+   "common": {
+    "name": "light"
+   }
+  },
+  "zigbee2mqtt.0.0xa2": {
+   "_id": "zigbee2mqtt.0.0xa2",
+   "type": "device",
+   "common": {
+    "name": "contact"
+   }
+  },
+  "zigbee2mqtt.0.0xa3": {
+   "_id": "zigbee2mqtt.0.0xa3",
+   "type": "device",
+   "common": {
+    "name": "leak"
+   }
+  },
+  "zigbee2mqtt.0.0xa4": {
+   "_id": "zigbee2mqtt.0.0xa4",
+   "type": "device",
+   "common": {
+    "name": "occ"
+   }
+  },
+  "zigbee2mqtt.0.0xa5": {
+   "_id": "zigbee2mqtt.0.0xa5",
+   "type": "device",
+   "common": {
+    "name": "hum"
+   }
+  },
+  "zigbee2mqtt.0.0xa6": {
+   "_id": "zigbee2mqtt.0.0xa6",
+   "type": "device",
+   "common": {
+    "name": "switch"
+   }
+  },
+  "zigbee2mqtt.0.0xa7": {
+   "_id": "zigbee2mqtt.0.0xa7",
+   "type": "device",
+   "common": {
+    "name": "unsupported"
+   }
+  },
+  "zigbee2mqtt.0.0xa8": {
+   "_id": "zigbee2mqtt.0.0xa8",
+   "type": "device",
+   "common": {
+    "name": "notinz2m"
+   }
+  },
+  "zigbee2mqtt.0.0xa9": {
+   "_id": "zigbee2mqtt.0.0xa9",
+   "type": "device",
+   "common": {
+    "name": "climate"
+   }
+  }
+ },
+ "states": {
+  "fritzdect.0.0.DECT_1.productname": "FRITZ!DECT Repeater 100",
+  "fritzdect.0.0.DECT_1.name": "Repeater",
+  "fritzdect.0.0.DECT_1.manufacturer": "AVM",
+  "fritzdect.0.0.DECT_1.fwversion": "1.2",
+  "fritzdect.0.0.DECT_2.productname": "FRITZ!Smart Energy 200",
+  "fritzdect.0.0.DECT_2.name": "Steckdose",
+  "fritzdect.0.0.DECT_3.productname": "FRITZ!Smart Thermo 301",
+  "fritzdect.0.0.DECT_3.name": "Thermo",
+  "fritzdect.0.0.DECT_3.manufacturer": "AVM",
+  "fritzdect.0.0.DECT_4.productname": "FRITZ!Unknown 9",
+  "fritzdect.0.0.DECT_4.name": "Unk"
+ },
+ "zigbeeDevs": [
+  {
+   "ieee_address": "0xa1",
+   "friendly_name": "Lamp",
+   "model_id": "L1",
+   "software_build_id": "1.0",
+   "definition": {
+    "model": "M1",
+    "vendor": "V1",
+    "exposes": [
+     {
+      "type": "light",
+      "features": [
+       {
+        "type": "binary",
+        "name": "state",
+        "access": 7,
+        "label": "State"
+       },
+       {
+        "type": "numeric",
+        "name": "brightness",
+        "access": 7,
+        "label": "B"
+       },
+       {
+        "type": "numeric",
+        "name": "color_temp",
+        "access": 7,
+        "label": "CT"
+       },
+       {
+        "type": "composite",
+        "name": "color_xy",
+        "access": 7,
+        "label": "C",
+        "features": [
+         {
+          "type": "numeric",
+          "name": "x",
+          "access": 7,
+          "label": "x"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "numeric",
+      "name": "linkquality",
+      "access": 1,
+      "label": "LQ"
+     }
+    ]
+   }
+  },
+  {
+   "ieee_address": "0xa2",
+   "friendly_name": "Fenster",
+   "model_id": "C1",
+   "definition": {
+    "model": "M2",
+    "vendor": "V2",
+    "exposes": [
+     {
+      "type": "binary",
+      "name": "contact",
+      "access": 1,
+      "label": "Contact"
+     },
+     {
+      "type": "numeric",
+      "name": "battery",
+      "access": 1,
+      "label": "Battery"
+     },
+     {
+      "type": "numeric",
+      "name": "linkquality",
+      "access": 1,
+      "label": "LQ"
+     }
+    ]
+   }
+  },
+  {
+   "ieee_address": "0xa3",
+   "friendly_name": "Leck",
+   "model_id": "W1",
+   "definition": {
+    "model": "M3",
+    "vendor": "V3",
+    "exposes": [
+     {
+      "type": "binary",
+      "name": "water_leak",
+      "access": 1,
+      "label": "Leak"
+     },
+     {
+      "type": "numeric",
+      "name": "battery",
+      "access": 1,
+      "label": "Battery"
+     }
+    ]
+   }
+  },
+  {
+   "ieee_address": "0xa4",
+   "friendly_name": "Bewegung",
+   "model_id": "O1",
+   "definition": {
+    "model": "M4",
+    "vendor": "V4",
+    "exposes": [
+     {
+      "type": "binary",
+      "name": "occupancy",
+      "access": 1,
+      "label": "Occ"
+     },
+     {
+      "type": "numeric",
+      "name": "illuminance",
+      "access": 1,
+      "label": "Ill"
+     },
+     {
+      "type": "numeric",
+      "name": "battery",
+      "access": 1,
+      "label": "Battery"
+     }
+    ]
+   }
+  },
+  {
+   "ieee_address": "0xa5",
+   "friendly_name": "Klima",
+   "model_id": "H1",
+   "definition": {
+    "model": "M5",
+    "vendor": "V5",
+    "exposes": [
+     {
+      "type": "numeric",
+      "name": "temperature",
+      "access": 1,
+      "label": "T"
+     },
+     {
+      "type": "numeric",
+      "name": "humidity",
+      "access": 1,
+      "label": "H"
+     },
+     {
+      "type": "numeric",
+      "name": "battery",
+      "access": 1,
+      "label": "Battery"
+     }
+    ]
+   }
+  },
+  {
+   "ieee_address": "0xa6",
+   "friendly_name": "Schalter",
+   "model_id": "S1",
+   "definition": {
+    "model": "M6",
+    "vendor": "V6",
+    "exposes": [
+     {
+      "type": "switch",
+      "features": [
+       {
+        "type": "binary",
+        "name": "state",
+        "access": 7,
+        "label": "State"
+       }
+      ]
+     },
+     {
+      "type": "numeric",
+      "name": "linkquality",
+      "access": 1,
+      "label": "LQ"
+     }
+    ]
+   }
+  },
+  {
+   "ieee_address": "0xa7",
+   "friendly_name": "Unsupp",
+   "model_id": "U1",
+   "definition": null
+  },
+  {
+   "ieee_address": "0xa9",
+   "friendly_name": "Heizung",
+   "model_id": "T1",
+   "definition": {
+    "model": "M9",
+    "vendor": "V9",
+    "exposes": [
+     {
+      "type": "climate",
+      "features": [
+       {
+        "type": "numeric",
+        "name": "occupied_heating_setpoint",
+        "access": 7,
+        "label": "Setpoint"
+       },
+       {
+        "type": "enum",
+        "name": "system_mode",
+        "access": 7,
+        "label": "Mode"
+       }
+      ]
+     },
+     {
+      "type": "numeric",
+      "name": "battery",
+      "access": 1,
+      "label": "Battery"
+     }
+    ]
+   }
+  }
+ ]
+}

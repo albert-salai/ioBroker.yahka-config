@@ -5,6 +5,7 @@ export default [
 	{
 		ignores: [
 			"build/",
+			"build-test/",
 			"test/",
 			"admin/",
 		]

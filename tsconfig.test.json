@@ -1,0 +1,14 @@
+// Compiles src and test to build-test/ for `npm test`
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"allowJs": false,
+		"checkJs": false,
+		"noEmit": false,
+		"outDir": "./build-test/"
+	},
+	"include": [
+		"src/**/*.ts",
+		"test/**/*.ts"
+	]
+}

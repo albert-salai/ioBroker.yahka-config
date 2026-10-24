@@ -1,4 +1,4 @@
-import type { AccConfig } from './types';
+import type { AccConfig, GeneratorResult } from './types';
 
 // applyDefaults(devs): fills in default accessory fields and enables all characteristics
 export function applyDefaults(devs: AccConfig[]): void {
@@ -62,4 +62,25 @@ export function mergeDevices(oldDevs: AccConfig[], createdDevs: AccConfig[], inv
 	}
 
 	return { newDevs, disabled, obsolete, added };
+}
+
+
+// assertSourceNotEmpty(srcInstId, generated, oldDevs): an empty source (adapter stopped, no data yet)
+// would mark all its devices obsolete, so it counts as a failure while the old config has devices of it
+export function assertSourceNotEmpty(srcInstId: string, generated: GeneratorResult, oldDevs: AccConfig[]): void {
+	if (generated.devices.length === 0  &&  generated.invalid.length === 0  &&  oldDevs.some(oldDev => oldDev.name.startsWith(`${srcInstId}.`))) {
+		throw new Error('source returned no devices, but yahka config contains devices of this source');
+	}
+}
+
+
+// duplicateNames(devs): names used by more than one device (they build the homekit UUID)
+export function duplicateNames(devs: AccConfig[]): string[] {
+	const seen = new Set<string>();
+	const duplicates = new Set<string>();
+	for (const { name } of devs) {
+		if (seen.has(name)) { duplicates.add(name); }
+		seen.add(name);
+	}
+	return [ ...duplicates ];
 }

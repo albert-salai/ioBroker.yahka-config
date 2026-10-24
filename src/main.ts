@@ -9,7 +9,7 @@ import { createFritzdect }			from './lib/generators/fritzdect';
 import { createShelly }				from './lib/generators/shelly';
 import { createTr064 }				from './lib/generators/tr064';
 import { createZigbee2mqtt }		from './lib/generators/zigbee2mqtt';
-import { applyDefaults, mergeDevices } from './lib/merge';
+import { applyDefaults, assertSourceNotEmpty, duplicateNames, mergeDevices } from './lib/merge';
 import type { AccConfig, Generator, GeneratorResult } from './lib/types';
 
 // debug: if set, devices are written to <dir>/<dstId>.json instead of saving any ioBroker object
@@ -160,10 +160,7 @@ class YahkaConfig extends utils.Adapter {
 				try {
 					const generated = await create({ adapter: this, srcInstId });
 
-					// an empty source (adapter stopped, no data yet) would mark all its devices obsolete
-					if (generated.devices.length === 0  &&  generated.invalid.length === 0  &&  oldDevs.some(oldDev => oldDev.name.startsWith(`${srcInstId}.`))) {
-						throw new Error('source returned no devices, but yahka config contains devices of this source');
-					}
+					assertSourceNotEmpty(srcInstId, generated, oldDevs);
 					result.devices.push(...generated.devices);
 					result.invalid.push(...generated.invalid);
 					result.historyIds.push(...generated.historyIds);
@@ -178,13 +175,9 @@ class YahkaConfig extends utils.Adapter {
 		}
 
 		// names must be unique: they build the homekit UUID
-		const names = new Set<string>();
-		for (const { name } of result.devices) {
-			if (names.has(name)) {
-				this.log.error(sprintf('%-31s %-20s %-50s %s', 'createDevices()', dstId, name, 'failed: duplicate accessory name'));
-				failed = true;
-			}
-			names.add(name);
+		for (const name of duplicateNames(result.devices)) {
+			this.log.error(sprintf('%-31s %-20s %-50s %s', 'createDevices()', dstId, name, 'failed: duplicate accessory name'));
+			failed = true;
 		}
 		return failed ? undefined : result;
 	}
