@@ -184,14 +184,14 @@ class YahkaConfig extends utils.Adapter {
 	 */
 	private async updateYahkaDevices(dstId: string, srcIdsObj: Record<string, boolean>, yahkaDst: ioBroker.Object): Promise<void> {
 		for (const [ srcInstId, enabled ] of Object.entries(srcIdsObj)) {
-			this.log.info(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, srcInstId, (enabled ? 'enabled' : 'skipped')));
+			this.log.info(sprintf('%-31s %-20s %-50s %s', 'updateYahkaDevices()', dstId, srcInstId, (enabled ? 'enabled' : 'skipped')));
 		}
 
 		// bridge
 		const native = yahkaDst.native as Record<string, unknown>;
 		const bridge = native['bridge'] as { devices?: AccConfig[] } | undefined;
 		if (! bridge) {
-			this.log.warn(sprintf('%-31s %-20s %-50s', 'onReady()', dstId, 'skipped: native.bridge missing'));
+			this.log.warn(sprintf('%-31s %-20s %-50s', 'updateYahkaDevices()', dstId, 'skipped: native.bridge missing'));
 			return;
 		}
 
@@ -202,7 +202,7 @@ class YahkaConfig extends utils.Adapter {
 		const generated = await this.createDevices(dstId, srcIdsObj, oldDevs);
 		if (! generated) {
 			// a missing source would mark its existing devices as obsolete, so keep the old config
-			this.log.warn(sprintf('%-31s %-20s %-50s', 'onReady()', dstId, 'skipped: source failed, yahka devices left unchanged'));
+			this.log.warn(sprintf('%-31s %-20s %-50s', 'updateYahkaDevices()', dstId, 'skipped: source failed, yahka devices left unchanged'));
 			return;
 		}
 		const { devices: createdDevs, invalid } = generated;
@@ -211,19 +211,19 @@ class YahkaConfig extends utils.Adapter {
 		// invalid devices that are new are skipped
 		for (const name of invalid) {
 			if (! oldDevs.some(oldDev => oldDev.name === name)) {
-				this.log.warn(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'skipped invalid', name));
+				this.log.warn(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'skipped invalid', name));
 			}
 		}
 
 		// newDevs
 		const { newDevs, disabled, obsolete, added } = mergeDevices(oldDevs, createdDevs, invalid);
-		for (const name of disabled	) { this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'disabled',	name)); }
-		for (const name of obsolete	) { this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'obsolete',	name)); }
-		for (const name of added	) { this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'added',		name)); }
+		for (const name of disabled	) { this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'disabled',	name)); }
+		for (const name of obsolete	) { this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'obsolete',	name)); }
+		for (const name of added	) { this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'added',		name)); }
 
 		// log diffs between oldDevs and newDevs
 		const diffs = deepDiff(oldDevs, newDevs);
-		this.logDiffs('createYahkaConfig()', diffs ?? []);
+		this.logDiffs('updateYahkaDevices()', diffs ?? []);
 
 		// dry run
 		if (DRYRUN_DIR) {
@@ -234,7 +234,7 @@ class YahkaConfig extends utils.Adapter {
 
 		// save
 		if (diffs) {
-			this.log.info(sprintf('%-31s %-20s %-50s %s', 'createYahkaConfig()', dstId, 'saving yahka devices ...', ''));
+			this.log.info(sprintf('%-31s %-20s %-50s %s', 'updateYahkaDevices()', dstId, 'saving yahka devices ...', ''));
 			bridge.devices = newDevs;
 			await this.setForeignObject('system.adapter.' + dstId, yahkaDst);
 		}
@@ -273,7 +273,7 @@ class YahkaConfig extends utils.Adapter {
 					result.invalid.push(...generated.invalid);
 				} catch (err) {
 					failed = true;
-					this.log.error(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, srcInstId, `failed: ${(err as Error).message}`));
+					this.log.error(sprintf('%-31s %-20s %-50s %s', 'createDevices()', dstId, srcInstId, `failed: ${(err as Error).message}`));
 				}
 			}
 		}
@@ -285,7 +285,7 @@ class YahkaConfig extends utils.Adapter {
 		const names = new Set<string>();
 		for (const { name } of result.devices) {
 			if (names.has(name)) {
-				this.log.error(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, name, 'failed: duplicate accessory name'));
+				this.log.error(sprintf('%-31s %-20s %-50s %s', 'createDevices()', dstId, name, 'failed: duplicate accessory name'));
 				failed = true;
 			}
 			names.add(name);
@@ -294,11 +294,6 @@ class YahkaConfig extends utils.Adapter {
 	}
 
 
-	/**
-	 *
-	 * @param srcInstId
-	 * @returns
-	 */
 	private async create_tr064(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
 
@@ -313,7 +308,7 @@ class YahkaConfig extends utils.Adapter {
 					'name':				state._id,								// NOTE: yahka adapter uses 'name' to build homekit UUID!
 					'manufacturer':		idPath.slice(0,2).join('.'),			// visible within iOS home app
 					'serial':			idPath.slice(2  ).join('.'),			// visible within iOS home app
-					'model':			(typeof state.common.name === 'string') ? state.common.name: state.common.name.en,		// visible within iOS home app
+					'model':			objName(state),		// visible within iOS home app
 					'services':			[] as AccService[],
 					'groupString':		idPath.slice(0,2).join('.')				// used by adapter only
 				};
@@ -322,8 +317,8 @@ class YahkaConfig extends utils.Adapter {
 				const accService: AccService = {
 					'type': 'Switch', 'subType': '', 'name': accConfig.model,
 					'characteristics': [
-						{ 'name': 'Name',	'inOutFunction': 'const',					'inOutParameters': accConfig.model	},
-						{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': state._id		}
+						constChar('Name', accConfig.model),
+						onlyAck('On', state._id)
 					]
 				};
 				accConfig.services.push(accService);
@@ -335,11 +330,6 @@ class YahkaConfig extends utils.Adapter {
 	}
 
 
-	/**
-	 *
-	 * @param srcInstId
-	 * @returns
-	 */
 	private async create_fritzdect(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
 
@@ -357,18 +347,14 @@ class YahkaConfig extends utils.Adapter {
 				if (productname.val === 'FRITZ!DECT Repeater 100') {
 					accCategory = AccCatId.Sensor;
 					srvType		= 'TemperatureSensor';
-					characteristics.push({
-						'name': 'CurrentTemperature', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${channel._id}.celsius`
-					});
+					characteristics.push(onlyAck('CurrentTemperature', `${channel._id}.celsius`));
 					await this.enableHistory(`${channel._id}.celsius`);
 
 				// FRITZ!Smart Energy 200
 				} else if (productname.val === 'FRITZ!Smart Energy 200') {
 					accCategory = AccCatId.Switch;
 					srvType		= 'Switch';
-					characteristics.push({
-						'name': 'On', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${channel._id}.state`
-					});
+					characteristics.push(onlyAck('On', `${channel._id}.state`));
 					await this.enableHistory(`${channel._id}.state`);
 
 				// FRITZ!Smart Thermo 301
@@ -376,11 +362,11 @@ class YahkaConfig extends utils.Adapter {
 					accCategory = AccCatId.Thermostat;
 					srvType		= 'Thermostat';
 					characteristics.push(
-						{ 'name': 'TemperatureDisplayUnits',	'inOutFunction': 'const',					'inOutParameters': 0, 								},
-						{ 'name': 'TargetTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': channel._id+'.tsoll'					},
-						{ 'name': 'CurrentTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': channel._id+'.tist'					},
-						{ 'name': 'TargetHeatingCoolingState',	'inOutFunction': 'const',					'inOutParameters': 3									},
-						{ 'name': 'CurrentHeatingCoolingState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': channel._id+'.heatingCoolingState'	},
+						constChar('TemperatureDisplayUnits', 0),
+						onlyAck('TargetTemperature', channel._id+'.tsoll'),
+						onlyAck('CurrentTemperature', channel._id+'.tist'),
+						constChar('TargetHeatingCoolingState', 3),
+						onlyAck('CurrentHeatingCoolingState', channel._id+'.heatingCoolingState'),
 					);														// TargetHeatingCoolingState:	0 := OFF, 1 := HEAT, 2 := COOL, 3 := AUTO
 					await this.enableHistory(`${channel._id}.tsoll`);		// CurrentHeatingCoolingState:	0 := OFF, 1 := HEAT, 2 := COOL
 					await this.enableHistory(`${channel._id}.tist` );
@@ -403,9 +389,7 @@ class YahkaConfig extends utils.Adapter {
 					const devName	= (typeof nameObj?.val === 'string') ? nameObj.val : 'unknown';
 
 					// add Name characteristic
-					characteristics.push({
-						'name': 'Name', 'inOutFunction': 'const', 'inOutParameters': devName
-					});
+					characteristics.push(constChar('Name', devName));
 
 					// accConfig
 					const manufacturer	= await this.getForeignStateAsync(`${channel._id}.manufacturer`);
@@ -435,11 +419,6 @@ class YahkaConfig extends utils.Adapter {
 		return { devices: accConfigs, invalid: [] };
 	}
 
-	/**
-	 *
-	 * @param srcInstId
-	 * @returns
-	 */
 	private async create_shelly(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
 
@@ -451,7 +430,7 @@ class YahkaConfig extends utils.Adapter {
 		// channels
 		for (const channel of channels) {
 			const idPath	= channel._id.split('.');					// [ 'shelly', '0', 'SHDM-2#94B97E16BE61#1',	'lights' ]
-			const name	= (typeof channel.common.name === 'string') ? channel.common.name : channel.common.name.en;		// [ 'shelly', '0', 'SHPLG-S#6A0761#1',			'Relay0' ]
+			const name	= objName(channel);		// [ 'shelly', '0', 'SHPLG-S#6A0761#1',			'Relay0' ]
 
 			// accCategory, srvType, characteristics
 			let accCategory								= '';			//accCatIds[expose.type]
@@ -462,28 +441,20 @@ class YahkaConfig extends utils.Adapter {
 			if ((idPath[3] ?? '').startsWith('Relay')) {
 				accCategory = AccCatId.Switch;
 				srvType		= 'Switch';
-				characteristics.push({
-					'name': 'On', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${channel._id}.Switch`
-				});
+				characteristics.push(onlyAck('On', `${channel._id}.Switch`));
 
 			// lights
 			} else if (idPath[3] === 'lights') {
 				accCategory = AccCatId.Lightbulb;
 				srvType		= 'Lightbulb';
-				characteristics.push({
-					'name': 'On', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${channel._id}.Switch`
-				});
-				characteristics.push({
-					'name': 'Brightness',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': `${channel._id}.brightness`
-				});
+				characteristics.push(onlyAck('On', `${channel._id}.Switch`));
+				characteristics.push(onlyAck('Brightness', `${channel._id}.brightness`));
 			}
 
 			// add devConfig
 			if (accCategory  &&  srvType) {
 				// name
-				characteristics.push({
-					'name': 'Name', 'inOutFunction': 'const', 'inOutParameters': name
-				});
+				characteristics.push(constChar('Name', name));
 
 				// accConfig
 				const accConfig: AccConfig = {
@@ -510,10 +481,6 @@ class YahkaConfig extends utils.Adapter {
 		return { devices: accConfigs, invalid: [] };
 	}
 
-	/**
-	 *
-	 * @param srcInstId
-	 */
 	private async create_by_role(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
 
@@ -522,7 +489,7 @@ class YahkaConfig extends utils.Adapter {
 			const objId		= pinObj._id;									//   '0_userdata.0.pin.tür_tag'
 			const idPath	= pinObj._id.split('.');						// [ '0_userdata', '0', 'pin', 'tür_tag' ]
 			const objRole	= pinObj.common.role;							// 'value.temperature'
-			const objName	= (typeof pinObj.common.name === 'string') ? pinObj.common.name : pinObj.common.name.en;		// 'Haustür'
+			const name		= objName(pinObj);		// 'Haustür'
 
 			// yahka device config
 			const accConfig: AccConfig = {
@@ -530,7 +497,7 @@ class YahkaConfig extends utils.Adapter {
 				'name':				objId,									// NOTE: yahka adapter uses 'name' to build homekit UUID!
 				'manufacturer':		idPath.slice(0,2).join('.'),			// visible within iOS home app
 				'serial':			idPath.slice(2  ).join('.'),			// visible within iOS home app
-				'model':			objName,								// visible within iOS home app
+				'model':			name,								// visible within iOS home app
 				'services':			[],										// default
 				'groupString':		idPath.slice(0,2).join('.')				// used by adapter only
 			};
@@ -540,10 +507,10 @@ class YahkaConfig extends utils.Adapter {
 				accConfig.category = AccCatId.Sensor;
 				accConfig.services = [
 					{
-						'type': 'ContactSensor', 'subType': '', 'name': objName,
+						'type': 'ContactSensor', 'subType': '', 'name': name,
 						'characteristics': [
-							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName	},
-							{ 'name': 'ContactSensorState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	},
+							constChar('Name', name),
+							onlyAck('ContactSensorState', objId),
 						]
 					}
 				];
@@ -553,10 +520,10 @@ class YahkaConfig extends utils.Adapter {
 				accConfig.category = AccCatId.Sensor;
 				accConfig.services = [
 					{
-						'type': 'MotionSensor', 'subType': '', 'name': objName,
+						'type': 'MotionSensor', 'subType': '', 'name': name,
 						'characteristics': [
-							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName	},
-							{ 'name': 'MotionDetected',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+							constChar('Name', name),
+							onlyAck('MotionDetected', objId)
 						]
 					}
 				];
@@ -566,10 +533,10 @@ class YahkaConfig extends utils.Adapter {
 				accConfig.category = AccCatId.Sensor;
 				accConfig.services = [
 					{
-						'type': 'OccupancySensor', 'subType': '', 'name': objName,
+						'type': 'OccupancySensor', 'subType': '', 'name': name,
 						'characteristics': [
-							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName	},
-							{ 'name': 'OccupancyDetected',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+							constChar('Name', name),
+							onlyAck('OccupancyDetected', objId)
 						]
 					}
 				];
@@ -579,10 +546,10 @@ class YahkaConfig extends utils.Adapter {
 				accConfig.category = AccCatId.Sensor;
 				accConfig.services = [
 					{
-						'type': 'LeakSensor', 'subType': '', 'name': objName,
+						'type': 'LeakSensor', 'subType': '', 'name': name,
 						'characteristics': [
-							{ 'name': 'Name',			'inOutFunction': 'const',					'inOutParameters': objName	},
-							{ 'name': 'LeakDetected',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+							constChar('Name', name),
+							onlyAck('LeakDetected', objId)
 						]
 					}
 				];
@@ -592,10 +559,10 @@ class YahkaConfig extends utils.Adapter {
 				accConfig.category = AccCatId.Switch;
 				accConfig.services = [
 					{
-						'type': 'Switch', 'subType': '', 'name': objName,
+						'type': 'Switch', 'subType': '', 'name': name,
 						'characteristics': [
-							{ 'name': 'Name',	'inOutFunction': 'const',					'inOutParameters': objName	},
-							{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+							constChar('Name', name),
+							onlyAck('On', objId)
 						]
 					}
 				];
@@ -605,10 +572,10 @@ class YahkaConfig extends utils.Adapter {
 				accConfig.category = AccCatId.Lightbulb;
 				accConfig.services = [
 					{
-						'type': 'Lightbulb', 'subType': '', 'name': objName,
+						'type': 'Lightbulb', 'subType': '', 'name': name,
 						'characteristics': [
-							{ 'name': 'Name',	'inOutFunction': 'const',					'inOutParameters': objName	},
-							{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+							constChar('Name', name),
+							onlyAck('On', objId)
 						]
 					}
 				];
@@ -618,11 +585,11 @@ class YahkaConfig extends utils.Adapter {
 				accConfig.category	= AccCatId.Door_lock;
 				accConfig.services = [
 					{
-						'type': 'LockMechanism', 'subType': '', 'name': objName,
+						'type': 'LockMechanism', 'subType': '', 'name': name,
 						'characteristics': [
-							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName											},
-							{ 'name': 'LockTargetState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId,			'conversionFunction': 'invert'	},
-							{ 'name': 'LockCurrentState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId+'_status',	'conversionFunction': 'invert'	},
+							constChar('Name', name),
+							onlyAck('LockTargetState',   objId,            { 'conversionFunction': 'invert' }),
+							onlyAck('LockCurrentState',  objId+'_status', { 'conversionFunction': 'invert' }),
 						]
 					}
 				];
@@ -632,12 +599,12 @@ class YahkaConfig extends utils.Adapter {
 				accConfig.category	= AccCatId.Garage_door_opener ;
 				accConfig.services = [
 					{
-						'type': 'GarageDoorOpener', 'subType': '', 'name': objName,
+						'type': 'GarageDoorOpener', 'subType': '', 'name': name,
 						'characteristics': [
-							{ 'name': 'Name',				'inOutFunction': 'const',					'inOutParameters': objName											},
-							{ 'name': 'TargetDoorState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId,			'conversionFunction': 'invert'	},
-							{ 'name': 'CurrentDoorState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId+'_status',	'conversionFunction': 'invert'	},
-							{ 'name': 'ObstructionDetected','inOutFunction': 'const',					'inOutParameters': false											},
+							constChar('Name', name),
+							onlyAck('TargetDoorState',   objId,            { 'conversionFunction': 'invert' }),
+							onlyAck('CurrentDoorState',  objId+'_status', { 'conversionFunction': 'invert' }),
+							constChar('ObstructionDetected', false),
 						]
 					}
 				];
@@ -647,10 +614,10 @@ class YahkaConfig extends utils.Adapter {
 				accConfig.category = AccCatId.Fan;
 				accConfig.services = [
 					{
-						'type': 'Fan', 'subType': '', 'name': objName,
+						'type': 'Fan', 'subType': '', 'name': name,
 						'characteristics': [
-							{ 'name': 'Name',	'inOutFunction': 'const',					'inOutParameters': objName	},
-							{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': objId	}
+							constChar('Name', name),
+							onlyAck('On', objId)
 						]
 					}
 				];
@@ -669,10 +636,6 @@ class YahkaConfig extends utils.Adapter {
 	}
 
 
-	/**
-	 *
-	 * @param srcInstId
-	 */
 	private async create_danfoss(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
 		const group = srcInstId;										// 'danfossicon.0'
@@ -681,7 +644,7 @@ class YahkaConfig extends utils.Adapter {
 		const housePause = await this.getForeignObjectAsync(`${srcInstId}.House.HousePause`);
 		if (housePause) {
 			const idPath	= housePause._id.split('.');				// [ 'danfossicon', '0', 'House', 'HousePause' ]
-			const name		= (typeof housePause.common.name === 'string') ? housePause.common.name : housePause.common.name.en;
+			const name		= objName(housePause);
 
 			const accConfig = {
 				'groupString':		group,								// used only by iobroker adapter to group accessiries
@@ -695,8 +658,8 @@ class YahkaConfig extends utils.Adapter {
 			const accService: AccService = {
 				'type': 'Switch', 'subType': '', 'name': accConfig.model,
 				'characteristics': [
-					{ 'name': 'Name',	'inOutFunction': 'const',					'inOutParameters': name				},
-					{ 'name': 'On',		'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': housePause._id	}
+					constChar('Name', name),
+					onlyAck('On', housePause._id)
 				]
 			};
 			accConfig.services.push(accService);
@@ -709,7 +672,7 @@ class YahkaConfig extends utils.Adapter {
 		for (const targetTempObj of Object.values(targetTemps).sort(sortBy('_id'))) {
 			const idPath	= targetTempObj._id.split('.');				// [ 'danfossicon', '0', 'room-01', 'TargetTemp' ]
 			const idBase	= idPath.slice(0, -1).join('.');			//   'danfossicon.0.room-01''
-			const name		= (typeof targetTempObj.common.name === 'string') ? targetTempObj.common.name : targetTempObj.common.name.en;
+			const name		= objName(targetTempObj);
 
 			const accConfig = {
 				'category':			AccCatId.Thermostat,
@@ -726,14 +689,14 @@ class YahkaConfig extends utils.Adapter {
 			const accService: AccService = {
 				'type': 'Thermostat', 'subType': '', 'name': name,
 				'characteristics': [
-					{ 'name': 'Name',						'inOutFunction': 'const',					'inOutParameters': name						},
-					{ 'name': 'TargetTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.TargetTemp'		},
-					{ 'name': 'CurrentTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.RoomTemp'		},
-					{ 'name': 'TemperatureDisplayUnits',	'inOutFunction': 'const',					'inOutParameters': 0, 					},
-					{ 'name': 'TargetHeatingCoolingState',	'inOutFunction': 'const',					'inOutParameters': 3, 					},
-					{ 'name': 'CurrentHeatingCoolingState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.ValveState',
+					constChar('Name', name),
+					onlyAck('TargetTemperature', idBase+'.TargetTemp'),
+					onlyAck('CurrentTemperature', idBase+'.RoomTemp'),
+					constChar('TemperatureDisplayUnits', 0),
+					constChar('TargetHeatingCoolingState', 3),
+					onlyAck('CurrentHeatingCoolingState', idBase+'.ValveState', {
 						'conversionFunction': 'script', 'conversionParameters': { 'toHomeKit': 'return (value) ? 1 : 2;', 'toIOBroker': 'return (value == 1);' }
-					}		// TargetHeatingCoolingState:		0 := OFF, 1 := HEAT, 2 := COOL, 3 := AUTO
+					})		// TargetHeatingCoolingState:		0 := OFF, 1 := HEAT, 2 := COOL, 3 := AUTO
 				]			// CurrentHeatingCoolingState:		0 := OFF, 1 := HEAT, 2 := COOL
 			};
 			accConfig.services.push(accService);
@@ -744,11 +707,6 @@ class YahkaConfig extends utils.Adapter {
 	}
 
 
-	/**
-	 *
-	 * @param srcInstId
-	 * @returns
-	 */
 	private async create_zigbee2mqtt(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
 		const invalid: string[] = [];
@@ -775,7 +733,6 @@ class YahkaConfig extends utils.Adapter {
 					.subscribe('zigbee2mqtt/bridge/devices');
 			});
 		});
-		//this.log.debug(sprintf('%-30s %-20s %-50s\n%s', 'create_zigbee2mqtt()', 'zigbeeDevs', '', JSON.stringify(zigbeeDevs, null, 4)));
 
 		// mqttDevs
 		const iobDevs = await this.getForeignObjectsAsync(`${srcInstId}.*`, 'device');
@@ -784,7 +741,6 @@ class YahkaConfig extends utils.Adapter {
 			const ieeeAdr	= idPath.slice(-1)[0];
 			const zigbeeDev	= zigbeeDevs.find(dev => (dev.ieee_address === ieeeAdr));
 			if (zigbeeDev) {
-				//this.log.debug(sprintf('%-30s %-20s %-50s\n%s', 'create_zigbee2mqtt()', 'zigbeeDev', '', JSON.stringify(zigbeeDev, null, 4)));
 
 				// validate
 				const grpName = idPath.slice(0, 2).join('.');
@@ -819,31 +775,25 @@ class YahkaConfig extends utils.Adapter {
 				const featureNames	= features.map(feature => feature.name);
 				const typedFeatures	= exposes.filter(expose => 'features' in expose);
 				const exposedLight	= typedFeatures.find(expose => (expose.type === 'light'));
-				//this.log.debug(sprintf('%-30s %-20s %-50s %s\n%s', 'create_zigbee2mqtt()', `featureNames`, iobDev._id, zigbeeDev.friendly_name, JSON.stringify(featureNames, null, 4)));
 
 				// Service Lightbulb
 				if (exposedLight) {
 					const characteristics: SrvCharacteristic[] = [];
 					for (const feature of exposedLight.features  ??  []) {
 						if (feature.name === 'state') {
-							characteristics.push({
-								'name': 'On', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.state`
-							});
+							characteristics.push(onlyAck('On', `${iobDev._id}.state`));
 
 						} else if (feature.name === 'brightness') {
-							characteristics.push({
-								'name': 'Brightness', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.brightness`
-							});
+							characteristics.push(onlyAck('Brightness', `${iobDev._id}.brightness`));
 
 						} else if (feature.name === 'color_temp') {
-							characteristics.push({
-								'name': 'ColorTemperature',	'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.colortemp`,
+							characteristics.push(onlyAck('ColorTemperature', `${iobDev._id}.colortemp`, {
 								'conversionFunction':	'script',
 								'conversionParameters': {
 									'toHomeKit':		'return Math.max(153, value)',
 									'toIOBroker':		'return Math.max(153, value)'
 								}
-							});
+							}));
 						}
 					}
 
@@ -859,9 +809,7 @@ class YahkaConfig extends utils.Adapter {
 					for (const feature of features) {
 						// Sensor ContactSensor
 						if (feature.name === 'contact') {
-							const characteristics: SrvCharacteristic[] = [{
-								'name': 'ContactSensorState', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters':	`${iobDev._id}.opened`
-							}];
+							const characteristics: SrvCharacteristic[] = [onlyAck('ContactSensorState', `${iobDev._id}.opened`)];
 							accConfig.services.push({
 								'type': 'ContactSensor', 'subType': '', 'name': devName, 'characteristics':	characteristics,
 								'isPrimary': true
@@ -881,9 +829,7 @@ class YahkaConfig extends utils.Adapter {
 					for (const feature of features) {
 						// Sensor LeakSensor
 						if (feature.name === 'water_leak') {
-							const characteristics: SrvCharacteristic[] = [{
-								'name': 'LeakDetected', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.detected`
-							}];
+							const characteristics: SrvCharacteristic[] = [onlyAck('LeakDetected', `${iobDev._id}.detected`)];
 							accConfig.services.push({
 								'type': 'LeakSensor', 'subType': '', 'name': devName, 'characteristics': characteristics,
 								'isPrimary': true
@@ -903,9 +849,7 @@ class YahkaConfig extends utils.Adapter {
 					for (const feature of features) {
 						// Sensor OccupancySensor
 						if (feature.name === 'occupancy') {
-							const characteristics: SrvCharacteristic[] = [{
-								'name': 'OccupancyDetected', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.occupancy`
-							}];
+							const characteristics: SrvCharacteristic[] = [onlyAck('OccupancyDetected', `${iobDev._id}.occupancy`)];
 							accConfig.services.push({
 								'type': 'OccupancySensor', 'subType': '', 'name': devName, 'characteristics': characteristics,
 								'isPrimary': true
@@ -915,9 +859,7 @@ class YahkaConfig extends utils.Adapter {
 						// Sensor LightSensor
 						if (feature.name === 'illuminance') {
 							const characteristics: SrvCharacteristic[] = [
-								{
-									'name': 'CurrentAmbientLightLevel', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.illuminance`
-								}
+								onlyAck('CurrentAmbientLightLevel', `${iobDev._id}.illuminance`)
 							];
 							accConfig.services.push({
 								'type': 'LightSensor', 'subType': '', 'name': `${devName} Helligkeit`, 'characteristics': characteristics,
@@ -938,9 +880,7 @@ class YahkaConfig extends utils.Adapter {
 					for (const feature of features) {
 						// Sensor humidity
 						if (feature.name === 'humidity') {
-							const characteristics: SrvCharacteristic[] = [{
-								'name': 'CurrentRelativeHumidity', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.humidity`
-							}];
+							const characteristics: SrvCharacteristic[] = [onlyAck('CurrentRelativeHumidity', `${iobDev._id}.humidity`)];
 							accConfig.services.push({
 								'type': 'HumiditySensor', 'subType': '', 'name': devName, 'characteristics': characteristics,
 								'isPrimary': true
@@ -949,9 +889,7 @@ class YahkaConfig extends utils.Adapter {
 
 						// Sensor temperature
 						if (feature.name === 'temperature') {
-							const characteristics: SrvCharacteristic[] = [{
-								'name': 'CurrentTemperature', 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.temperature`
-							}];
+							const characteristics: SrvCharacteristic[] = [onlyAck('CurrentTemperature', `${iobDev._id}.temperature`)];
 							accConfig.services.push({
 								'type': 'TemperatureSensor', 'subType': '', 'name': `${devName} Temperatur`, 'characteristics': characteristics,
 								'linkTo': devName
@@ -975,9 +913,7 @@ class YahkaConfig extends utils.Adapter {
 				if (accConfig.category !== '') {
 					// add Name characteristic to every service
 					for (const accService of accConfig.services) {
-						accService.characteristics.push({
-							'name': 'Name', 'inOutFunction': 'const', 'inOutParameters': accService.name
-						});
+						accService.characteristics.push(constChar('Name', accService.name));
 						this.log.debug(sprintf('%-30s %-20s %-50s %s', 'create_zigbee2mqtt()', accService.type, accConfig.name, accService.name));
 					}
 
@@ -987,7 +923,6 @@ class YahkaConfig extends utils.Adapter {
 			}
 		}
 
-		//this.log.debug(sprintf('%-30s %-20s %-50s\n%s', 'create_zigbee2mqtt()', 'devConfigs', '', JSON.stringify(devConfigs, null, 4)));
 		return { devices: accConfigs, invalid };
 	}
 
@@ -1009,10 +944,6 @@ class YahkaConfig extends utils.Adapter {
 		}
 	}
 
-	/**
-	 *
-	 * @param stateId
-	 */
 	private async enableHistory(stateId: string): Promise<void> {
 		if (this.historyId) {
 			const oldObj = await this.getForeignObjectAsync(stateId);
@@ -1033,7 +964,6 @@ class YahkaConfig extends utils.Adapter {
 					this.logDiffs('enableHistory()', diffs);
 
 					// write newObj
-					//this.log.debug(sprintf('%-30s %-20s %-50s %s', 'enableHistory()', 'common', stateId, JSON.stringify(common, null, 4)));
 					if (! DRYRUN_DIR) {
 						await this.setForeignObject(stateId, newObj);
 					}
@@ -1149,13 +1079,32 @@ function batteryService(iobDevId: string, devName: string): AccService {
 	return {
 		'type': 'Battery', 'subType': '', 'name': `${devName} Batterie`, 'linkTo': devName,
 		'characteristics': [
-			{ 'name': 'BatteryLevel',		'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDevId}.battery` },
-			{ 'name': 'StatusLowBattery',	'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDevId}.battery`,
-				'conversionFunction': 'script', 'conversionParameters': { 'toHomeKit': 'return (value < 10);' } },
+			onlyAck('BatteryLevel', `${iobDevId}.battery`),
+			onlyAck('StatusLowBattery', `${iobDevId}.battery`, {
+				'conversionFunction': 'script', 'conversionParameters': { 'toHomeKit': 'return (value < 10);' }
+			}),
 		],
 	};
 }
 
+
+
+// objName(obj): display name of an object, as shown in the iOS home app
+function objName(obj: ioBroker.Object): string {
+	return (typeof obj.common.name === 'string') ? obj.common.name : obj.common.name.en;
+}
+
+
+// onlyAck(name, stateId, extra): characteristic read from / written to an ioBroker state (ack only)
+function onlyAck(name: string, stateId: string, extra: Partial<SrvCharacteristic> = {}): SrvCharacteristic {
+	return { name, 'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': stateId, ...extra };
+}
+
+
+// constChar(name, value): characteristic with a constant value
+function constChar(name: string, value: string | number | boolean): SrvCharacteristic {
+	return { name, 'inOutFunction': 'const', 'inOutParameters': value };
+}
 
 
 // sortBy(key)
