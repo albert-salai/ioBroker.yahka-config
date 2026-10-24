@@ -1,6 +1,6 @@
 import * as utils					from '@iobroker/adapter-core';
 import   mqtt 						from 'mqtt';
-import { diff as deepDiff }			from 'deep-diff';
+import { diff as deepDiff, Diff }	from 'deep-diff';
 import { sprintf }					from 'sprintf-js';
 
 // mqtt used to get ZigbeeDevice list
@@ -163,106 +163,93 @@ class YahkaConfig extends utils.Adapter {
 				this.log.warn(sprintf('%-31s %-20s %-50s', 'onReady()', ('system.adapter.'+dstId), 'not installed'));
 				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
 				delete mapping[dstId];
-
 			} else {
-				for (const [ srcInstId, enabled ] of Object.entries(srcIdsObj)) {
-					this.log.info(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, srcInstId, (enabled ? 'enabled' : 'skipped')));
-				}
-
-				// oldDevs		-		yahka adapter uses 'name' to build homekit UUID
-				const native = yahkaDst.native as Record<string, unknown>;
-				const bridge = (native['bridge'] ?? {}) as { devices?: AccConfig[] };
-				const oldDevs: AccConfig[] = bridge.devices ?? [];
-
-				// createdDevs
-				let createdDevs: AccConfig[] = [];
-
-				for (const [ srcInstId, enabled ] of Object.entries(srcIdsObj)) {
-					if (enabled) {
-						const adapter = srcInstId.split('.')[0];
-						if		(adapter === 'danfossicon'	)	{ createdDevs = createdDevs.concat(await this.create_danfoss	(srcInstId, yahkaDst)); }
-						else if (adapter === 'fritzdect'	)	{ createdDevs = createdDevs.concat(await this.create_fritzdect	(srcInstId, yahkaDst)); }
-						else if (adapter === 'rpi-io'		)	{ createdDevs = createdDevs.concat(await this.create_by_role	(srcInstId, yahkaDst)); }
-						else if (adapter === 'shelly'		)	{ createdDevs = createdDevs.concat(await this.create_shelly		(srcInstId, yahkaDst)); }
-						else if (adapter === 'tr-064'		)	{ createdDevs = createdDevs.concat(await this.create_tr064		(srcInstId, yahkaDst)); }
-						else if (adapter === 'zigbee2mqtt'	)	{ createdDevs = createdDevs.concat(await this.create_zigbee2mqtt(srcInstId, yahkaDst)); }
-						else if (adapter === 'switchboard-io')	{ createdDevs = createdDevs.concat(await this.create_by_role	(srcInstId, yahkaDst)); }
-					}
-				}
-
-				// enable all characteristics
-				for (const createdDev of createdDevs) {
-					// defaults
-					Object.assign(createdDev, Object.assign({
-						'configType':		'customdevice',
-						'manufacturer':		'n/a',				// visible within iOS home app
-						'model':			'n/a',				// visible within iOS home app
-						'serial':			'n/a',				// visible within iOS home app
-						'firmware':			'n/a',				// visible within iOS home app
-						'enabled':			true,
-					}, createdDev));
-					for (const service of createdDev.services) {
-						for (const characteristic of service.characteristics) {
-							characteristic.enabled = true;
-						}
-					}
-				}
-
-				// add newDev if existing in yahkaOldDevs
-				const newDevs: AccConfig[] = [];
-				for (const oldDev of oldDevs) {
-					const createdDev = createdDevs.find((createdDev) => (createdDev.name === oldDev.name));
-					if (createdDev) {
-						createdDev.enabled = oldDev.enabled ?? false;
-						if (! createdDev.enabled) {
-							createdDev.groupString = '~disabled~'
-							this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'disabled', createdDev.name));
-						}
-						newDevs.push(createdDev);
-					} else {
-						newDevs.push(Object.assign({}, oldDev, {
-							enabled:		false,
-							groupString:	'~obsolete~'
-						}));
-						this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'obsolete', oldDev.name));
-					}
-				}
-
-				// add createdDev if not existing in oldDevs
-				for (const createdDev of createdDevs) {
-					if (! oldDevs.find((oldDev) => (oldDev.name === createdDev.name))) {
-						newDevs.push(createdDev);
-						this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'added', createdDev.name));
-					}
-				}
-				//this.log.debug(sprintf('%-31s %-20s\n%s', 'createYahkaConfig()', 'oldDevs', JSON.stringify(oldDevs, null, 4)));
-				//this.log.debug(sprintf('%-31s %-20s\n%s', 'createYahkaConfig()', 'newDevs', JSON.stringify(newDevs, null, 4)));
-
-				// log diffs between oldDevs and newDevs
-				const diffs = deepDiff(oldDevs, newDevs);
-				for (const diff of (diffs ?? [])) {
-					if (diff.path) {
-						const pathStr = diff.path.map((val) => (typeof val === 'number' ? `[${String(val)}]` : `.${String(val)}`)).join('');
-						if		(diff.kind === 'N')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'added',   pathStr, JSON.stringify(diff.rhs))); }
-						else if (diff.kind === 'D')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'deleted', pathStr, JSON.stringify(diff.lhs))); }
-						else if (diff.kind === 'E')		{ this.log.info(sprintf('%-31s %-20s %-30s %-20s --> %-10s',	'createYahkaConfig()', 'edited',  pathStr, JSON.stringify(diff.lhs), JSON.stringify(diff.rhs))); }
-						else /*  diff.kind === 'A' */	{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'changed', pathStr, JSON.stringify(diff.item))); }
-					}
-				}
-
-				// save
-				if (diffs) {
-					this.log.info(sprintf('%-31s %-20s %-50s %s', 'createYahkaConfig()', dstId, 'saving yahka devices ...', ''));
-					if (yahkaDst.native['bridge']) {
-						(yahkaDst.native['bridge'] as Record<string, unknown>)['devices'] = newDevs;
-						await this.setForeignObject('system.adapter.' + dstId, yahkaDst);
-					}
-				}
+				await this.updateYahkaDevices(dstId, srcIdsObj, yahkaDst);
 			}
 		}
 
 		// stop until next schedule
 		this.terminate('yahka config updated. adapter stopped until next scheduled moment');
+	}
+
+
+	/**
+	 * Regenerates the devices of one yahka instance and saves them if they changed.
+	 *
+	 * @param dstId		yahka instance, e.g. 'yahka.0'
+	 * @param srcIdsObj	source instances mapped to their enabled flag
+	 * @param yahkaDst	object 'system.adapter.<dstId>'
+	 */
+	private async updateYahkaDevices(dstId: string, srcIdsObj: Record<string, boolean>, yahkaDst: ioBroker.Object): Promise<void> {
+		for (const [ srcInstId, enabled ] of Object.entries(srcIdsObj)) {
+			this.log.info(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, srcInstId, (enabled ? 'enabled' : 'skipped')));
+		}
+
+		// oldDevs		-		yahka adapter uses 'name' to build homekit UUID
+		const native = yahkaDst.native as Record<string, unknown>;
+		const bridge = (native['bridge'] ?? {}) as { devices?: AccConfig[] };
+		const oldDevs: AccConfig[] = bridge.devices ?? [];
+
+		// createdDevs
+		const createdDevs = await this.createDevices(dstId, srcIdsObj, yahkaDst);
+		if (! createdDevs) {
+			// a missing source would mark its existing devices as obsolete, so keep the old config
+			this.log.warn(sprintf('%-31s %-20s %-50s', 'onReady()', dstId, 'skipped: source failed, yahka devices left unchanged'));
+			return;
+		}
+		applyDefaults(createdDevs);
+
+		// newDevs
+		const { newDevs, disabled, obsolete, added } = mergeDevices(oldDevs, createdDevs);
+		for (const name of disabled	) { this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'disabled',	name)); }
+		for (const name of obsolete	) { this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'obsolete',	name)); }
+		for (const name of added	) { this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'added',		name)); }
+
+		// log diffs between oldDevs and newDevs
+		const diffs = deepDiff(oldDevs, newDevs);
+		this.logDiffs('createYahkaConfig()', diffs ?? []);
+
+		// save
+		if (diffs) {
+			this.log.info(sprintf('%-31s %-20s %-50s %s', 'createYahkaConfig()', dstId, 'saving yahka devices ...', ''));
+			if (yahkaDst.native['bridge']) {
+				(yahkaDst.native['bridge'] as Record<string, unknown>)['devices'] = newDevs;
+				await this.setForeignObject('system.adapter.' + dstId, yahkaDst);
+			}
+		}
+	}
+
+
+	/**
+	 * Runs the generator of every enabled source instance.
+	 *
+	 * @returns	all created devices, or undefined if any generator failed
+	 */
+	private async createDevices(dstId: string, srcIdsObj: Record<string, boolean>, yahkaDst: ioBroker.Object): Promise<AccConfig[] | undefined> {
+		const generators: Record<string, (srcInstId: string, dst: ioBroker.Object) => Promise<AccConfig[]>> = {
+			'danfossicon':		this.create_danfoss		.bind(this),
+			'fritzdect':		this.create_fritzdect	.bind(this),
+			'rpi-io':			this.create_by_role		.bind(this),
+			'shelly':			this.create_shelly		.bind(this),
+			'switchboard-io':	this.create_by_role		.bind(this),
+			'tr-064':			this.create_tr064		.bind(this),
+			'zigbee2mqtt':		this.create_zigbee2mqtt	.bind(this),
+		};
+
+		let createdDevs: AccConfig[] = [];
+		let failed = false;
+		for (const [ srcInstId, enabled ] of Object.entries(srcIdsObj)) {
+			const create = enabled ? generators[srcInstId.split('.')[0] ?? ''] : undefined;
+			if (create) {
+				try {
+					createdDevs = createdDevs.concat(await create(srcInstId, yahkaDst));
+				} catch (err) {
+					failed = true;
+					this.log.error(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, srcInstId, `failed: ${(err as Error).message}`));
+				}
+			}
+		}
+		return failed ? undefined : createdDevs;
 	}
 
 
@@ -360,7 +347,7 @@ class YahkaConfig extends utils.Adapter {
 					await this.enableHistory(`${channel._id}.tist` );
 
 				} else {
-					this.log.error(sprintf('%-30s %-20s %-50s', 'create_fritzdect()', 'unknown', 'productname', productname.val));
+					this.log.error(sprintf('%-30s %-20s %-50s %s', 'create_fritzdect()', 'unknown', 'productname', String(productname.val)));
 				}
 
 				// add devConfig
@@ -730,13 +717,23 @@ class YahkaConfig extends utils.Adapter {
 		const accConfigs: AccConfig[] = [];
 
 		// zigbeeDevs
-		const zigbeeDevs = await new Promise<ZigbeeDevice[]>((resolve, _reject) => {
+		const zigbeeDevs = await new Promise<ZigbeeDevice[]>((resolve, reject) => {
 			const client = mqtt.connect('mqtt://127.0.0.1:1883');
+			const finish = (err?: Error, devs?: ZigbeeDevice[]): void => {
+				clearTimeout(timer);
+				client.end();
+				if (err) { reject(err); } else { resolve(devs ?? []); }
+			};
+			const timer = setTimeout(() => { finish(new Error('timeout waiting for zigbee2mqtt/bridge/devices')); }, 10000);
+			client.on('error', (err: Error) => { finish(err); });
 			client.on('connect', (_pkt: mqtt.IConnackPacket) => {
 				client
 					.on('message', (_topic: string, payload: Buffer, _pkt: mqtt.IPublishPacket) => {
-						client.end();
-						resolve(JSON.parse(payload.toString()) as ZigbeeDevice[]);
+						try {
+							finish(undefined, JSON.parse(payload.toString()) as ZigbeeDevice[]);
+						} catch (err) {
+							finish(err as Error);
+						}
 					})
 					.subscribe('zigbee2mqtt/bridge/devices');
 			});
@@ -865,18 +862,7 @@ class YahkaConfig extends utils.Adapter {
 
 						// Sensor Battery
 						if (feature.name === 'battery') {
-							const characteristics: SrvCharacteristic[] = [
-								{
-									'name': 'BatteryLevel',		'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.battery`
-								}, {
-									'name': 'StatusLowBattery',	'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.battery`,
-									'conversionFunction': 'script', 'conversionParameters': { 'toHomeKit': 'return (value < 10);' }
-								}
-							];
-							accConfig.services.push({
-								'type': 'Battery', 'subType': '', 'name': `${devName} Batterie`, 'characteristics': characteristics,
-								'linkTo': devName
-							});
+							accConfig.services.push(batteryService(iobDev._id, devName));
 						}
 					}
 
@@ -898,18 +884,7 @@ class YahkaConfig extends utils.Adapter {
 
 						// Sensor Battery
 						if (feature.name === 'battery') {
-							const characteristics: SrvCharacteristic[] = [
-								{
-									'name': 'BatteryLevel',		'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.battery`
-								}, {
-									'name': 'StatusLowBattery',	'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.battery`,
-									'conversionFunction': 'script', 'conversionParameters': { 'toHomeKit': 'return (value < 10);' }
-								}
-							];
-							accConfig.services.push({
-								'type': 'Battery', 'subType': '', 'name': `${devName} Batterie`, 'characteristics': characteristics,
-								'linkTo': devName
-							});
+							accConfig.services.push(batteryService(iobDev._id, devName));
 						}
 					}
 
@@ -944,18 +919,7 @@ class YahkaConfig extends utils.Adapter {
 
 						// Sensor Battery
 						if (feature.name === 'battery') {
-							const characteristics: SrvCharacteristic[] = [
-								{
-									'name': 'BatteryLevel',		'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.battery`
-								}, {
-									'name': 'StatusLowBattery',	'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.battery`,
-									'conversionFunction': 'script', 'conversionParameters': { 'toHomeKit': 'return (value < 10);' }
-								}
-							];
-							accConfig.services.push({
-								'type': 'Battery', 'subType': '', 'name': `${devName} Batterie`, 'characteristics': characteristics,
-								'linkTo': devName
-							});
+							accConfig.services.push(batteryService(iobDev._id, devName));
 						}
 					}
 
@@ -988,18 +952,7 @@ class YahkaConfig extends utils.Adapter {
 
 						// Sensor Battery
 						if (feature.name === 'battery') {
-							const characteristics: SrvCharacteristic[] = [
-								{
-									'name': 'BatteryLevel',		'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.battery`
-								}, {
-									'name': 'StatusLowBattery',	'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDev._id}.battery`,
-									'conversionFunction': 'script', 'conversionParameters': { 'toHomeKit': 'return (value < 10);' }
-								}
-							];
-							accConfig.services.push({
-								'type': 'Battery', 'subType': '', 'name': `${devName} Batterie`, 'characteristics': characteristics,
-								'linkTo': devName
-							});
+							accConfig.services.push(batteryService(iobDev._id, devName));
 						}
 					}
 				}
@@ -1031,6 +984,24 @@ class YahkaConfig extends utils.Adapter {
 	}
 
 	/**
+	 * Logs deep-diff results, one line per change.
+	 *
+	 * @param caller	label shown in the log line
+	 * @param diffs		result of deepDiff()
+	 */
+	private logDiffs(caller: string, diffs: Diff<unknown>[]): void {
+		for (const diff of diffs) {
+			if (diff.path) {
+				const pathStr = diff.path.map((val) => (typeof val === 'number' ? `[${String(val)}]` : `.${String(val)}`)).join('');
+				if		(diff.kind === 'N')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					caller, 'added',   pathStr, JSON.stringify(diff.rhs))); }
+				else if (diff.kind === 'D')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					caller, 'deleted', pathStr, JSON.stringify(diff.lhs))); }
+				else if (diff.kind === 'E')		{ this.log.info(sprintf('%-31s %-20s %-30s %-20s --> %-10s',	caller, 'edited',  pathStr, JSON.stringify(diff.lhs), JSON.stringify(diff.rhs))); }
+				else /*  diff.kind === 'A' */	{ this.log.info(sprintf('%-31s %-20s %-30s %s',					caller, 'changed', pathStr, JSON.stringify(diff.item))); }
+			}
+		}
+	}
+
+	/**
 	 *
 	 * @param stateId
 	 */
@@ -1042,23 +1013,16 @@ class YahkaConfig extends utils.Adapter {
 
 			} else {
 				const newObj		= JSON.parse(JSON.stringify(oldObj)) as typeof oldObj;
-				const newCustom		= (newObj.common.custom			?? {});
+				newObj.common.custom = newObj.common.custom ?? {};				// attach, otherwise a missing entry is lost
+				const newCustom		= newObj.common.custom;
 				const newHistory	= (newCustom[this.historyId]	?? {}) as Record<string, unknown>;
 				newHistory['enabled'] = true;
+				newCustom[this.historyId] = newHistory;
 
-				// log diffs between oldDevs and newDevs
+				// log diffs between oldObj and newObj
 				const diffs = deepDiff(oldObj, newObj) ?? [];
 				if (diffs.length > 0) {
-					// debug log
-					for (const diff of diffs) {
-						if (diff.path) {
-							const pathStr = diff.path.map((val) => (typeof val === 'number' ? `[${String(val)}]` : `.${String(val)}`)).join('');
-							if		(diff.kind === 'N')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'added',   pathStr, JSON.stringify(diff.rhs))); }
-							else if (diff.kind === 'D')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'deleted', pathStr, JSON.stringify(diff.lhs))); }
-							else if (diff.kind === 'E')		{ this.log.info(sprintf('%-31s %-20s %-30s %-20s --> %-10s',	'createYahkaConfig()', 'edited',  pathStr, JSON.stringify(diff.lhs), JSON.stringify(diff.rhs))); }
-							else /*  diff.kind === 'A' */	{ this.log.info(sprintf('%-31s %-20s %-30s %s',					'createYahkaConfig()', 'changed', pathStr, JSON.stringify(diff.item))); }
-						}
-					}
+					this.logDiffs('enableHistory()', diffs);
 
 					// write newObj
 					//this.log.debug(sprintf('%-30s %-20s %-50s %s', 'enableHistory()', 'common', stateId, JSON.stringify(common, null, 4)));
@@ -1074,6 +1038,76 @@ class YahkaConfig extends utils.Adapter {
 	private onUnload(callback: () => void): void {
 		callback();
 	}
+}
+
+// applyDefaults(devs): fills in default accessory fields and enables all characteristics
+function applyDefaults(devs: AccConfig[]): void {
+	for (const dev of devs) {
+		Object.assign(dev, Object.assign({
+			'configType':		'customdevice',
+			'manufacturer':		'n/a',				// visible within iOS home app
+			'model':			'n/a',				// visible within iOS home app
+			'serial':			'n/a',				// visible within iOS home app
+			'firmware':			'n/a',				// visible within iOS home app
+			'enabled':			true,
+		}, dev));
+		for (const service of dev.services) {
+			for (const characteristic of service.characteristics) {
+				characteristic.enabled = true;
+			}
+		}
+	}
+}
+
+
+// mergeDevices(oldDevs, createdDevs): keeps the order of oldDevs, flags missing ones obsolete, appends new ones
+function mergeDevices(oldDevs: AccConfig[], createdDevs: AccConfig[]): { newDevs: AccConfig[], disabled: string[], obsolete: string[], added: string[] } {
+	const newDevs:	AccConfig[]	= [];
+	const disabled:	string[]	= [];
+	const obsolete:	string[]	= [];
+	const added:	string[]	= [];
+
+	// add newDev if existing in oldDevs
+	for (const oldDev of oldDevs) {
+		const createdDev = createdDevs.find((createdDev) => (createdDev.name === oldDev.name));
+		if (createdDev) {
+			createdDev.enabled = oldDev.enabled ?? false;
+			if (! createdDev.enabled) {
+				createdDev.groupString = '~disabled~';
+				disabled.push(createdDev.name);
+			}
+			newDevs.push(createdDev);
+		} else {
+			newDevs.push(Object.assign({}, oldDev, {
+				enabled:		false,
+				groupString:	'~obsolete~'
+			}));
+			obsolete.push(oldDev.name);
+		}
+	}
+
+	// add createdDev if not existing in oldDevs
+	for (const createdDev of createdDevs) {
+		if (! oldDevs.find((oldDev) => (oldDev.name === createdDev.name))) {
+			newDevs.push(createdDev);
+			added.push(createdDev.name);
+		}
+	}
+
+	return { newDevs, disabled, obsolete, added };
+}
+
+
+// batteryService(iobDevId, devName): Battery service linked to the primary service 'devName'
+function batteryService(iobDevId: string, devName: string): AccService {
+	return {
+		'type': 'Battery', 'subType': '', 'name': `${devName} Batterie`, 'linkTo': devName,
+		'characteristics': [
+			{ 'name': 'BatteryLevel',		'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDevId}.battery` },
+			{ 'name': 'StatusLowBattery',	'inOutFunction': 'ioBroker.State.OnlyACK', 'inOutParameters': `${iobDevId}.battery`,
+				'conversionFunction': 'script', 'conversionParameters': { 'toHomeKit': 'return (value < 10);' } },
+		],
+	};
 }
 
 
