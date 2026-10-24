@@ -48,48 +48,39 @@ interface AccConfig {
 	enabled?:				boolean,
 }
 
-// ZigbeeFeature
+// ZigbeeFeature (only the fields used here)
 interface ZigbeeFeature {
-	access:					number,
-	description?:			string,
-	label:					string,
 	name:					string,
-	type:					'binary' | 'numeric' | 'enum' | 'composite' | 'text' | 'list',
+	type:					string,
 	features?:				ZigbeeFeature[],
 }
 
-// ZigbeeFeatures
-interface ZigbeeFeatures {
-	type:					'light' | 'composite';		// | 'switch' | 'lock' | 'list' | 'text' | 'cover' | 'fan' | 'climate',
-	features:				ZigbeeFeature[],
+// ZigbeeExpose: either a plain feature, or a group with 'features' (light, switch, climate, cover, lock, fan, composite, ...)
+interface ZigbeeExpose {
+	type:					string,
+	name?:					string,
+	features?:				ZigbeeFeature[],
 }
 
 // ZigbeeDevice
 //		see https://github.com/Koenkk/zigbee2mqtt/blob/master/lib/extension/bridge.ts#L812
 interface ZigbeeDevice {
 	ieee_address:			string,
-	type:					'EndDevice' | 'Router',
-	network_address:		number,
-	supported:				boolean,
 	friendly_name:			string,
-	disabled:				boolean,
 	//	see https://github.com/Koenkk/zigbee2mqtt/blob/master/lib/extension/bridge.ts#L876
-	definition: {
+	definition: {								// null for unsupported devices
 		model:				string,
 		vendor:				string,
-		description:		string,
-		exposes:			(ZigbeeFeatures | ZigbeeFeature)[],
-		supports_ota:		boolean,
-		options:			Record<string, unknown>[],
-		icon?:				string,
-	},
-	power_source:			'Battery' | 'Mains (single phase)',
+		exposes:			ZigbeeExpose[],
+	} | null,
 	software_build_id?:		string,
 	model_id:				string,
-	interviewing:			boolean,
-	interview_completed:	boolean,
-	manufacturer:			string,
-	endpoints:				Record<string, unknown>[],
+}
+
+// Generated: result of one generator
+interface Generated {
+	devices:				AccConfig[],
+	invalid:				string[],			// names of devices that exist at the source but cannot be generated
 }
 
 
@@ -153,28 +144,34 @@ class YahkaConfig extends utils.Adapter {
 	 * Is called when databases are connected and adapter received configuration.
 	 */
 	private async onReady(): Promise<void> {
-		const mapping = this.config.mapping;
+		try {
+			const mapping = this.config.mapping;
 
-		// historyId
-		const systemConfig = await this.getForeignObjectAsync('system.config');
-		if (systemConfig) {
-			this.historyId = systemConfig.common.defaultHistory || '';
-		}
-
-		// yahka dstId
-		for (const [ dstId, srcIdsObj ] of Object.entries(mapping)) {
-			const yahkaDst = await this.getForeignObjectAsync('system.adapter.' + dstId);
-			if (! yahkaDst) {
-				this.log.warn(sprintf('%-31s %-20s %-50s', 'onReady()', ('system.adapter.'+dstId), 'not installed'));
-				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-				delete mapping[dstId];
-			} else {
-				await this.updateYahkaDevices(dstId, srcIdsObj, yahkaDst);
+			// historyId
+			const systemConfig = await this.getForeignObjectAsync('system.config');
+			if (systemConfig) {
+				this.historyId = systemConfig.common.defaultHistory || '';
 			}
-		}
 
-		// stop until next schedule
-		this.terminate('yahka config updated. adapter stopped until next scheduled moment');
+			// yahka dstId
+			for (const [ dstId, srcIdsObj ] of Object.entries(mapping)) {
+				try {
+					const yahkaDst = await this.getForeignObjectAsync('system.adapter.' + dstId);
+					if (! yahkaDst) {
+						this.log.warn(sprintf('%-31s %-20s %-50s', 'onReady()', ('system.adapter.'+dstId), 'not installed'));
+					} else {
+						await this.updateYahkaDevices(dstId, srcIdsObj, yahkaDst);
+					}
+				} catch (err) {
+					this.log.error(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, 'failed', (err as Error).message));
+				}
+			}
+		} catch (err) {
+			this.log.error(sprintf('%-31s %-50s %s', 'onReady()', 'failed', (err as Error).message));
+		} finally {
+			// stop until next schedule
+			this.terminate('yahka config updated. adapter stopped until next scheduled moment');
+		}
 	}
 
 
@@ -190,22 +187,36 @@ class YahkaConfig extends utils.Adapter {
 			this.log.info(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, srcInstId, (enabled ? 'enabled' : 'skipped')));
 		}
 
-		// oldDevs		-		yahka adapter uses 'name' to build homekit UUID
+		// bridge
 		const native = yahkaDst.native as Record<string, unknown>;
-		const bridge = (native['bridge'] ?? {}) as { devices?: AccConfig[] };
+		const bridge = native['bridge'] as { devices?: AccConfig[] } | undefined;
+		if (! bridge) {
+			this.log.warn(sprintf('%-31s %-20s %-50s', 'onReady()', dstId, 'skipped: native.bridge missing'));
+			return;
+		}
+
+		// oldDevs		-		yahka adapter uses 'name' to build homekit UUID
 		const oldDevs: AccConfig[] = bridge.devices ?? [];
 
 		// createdDevs
-		const createdDevs = await this.createDevices(dstId, srcIdsObj, yahkaDst);
-		if (! createdDevs) {
+		const generated = await this.createDevices(dstId, srcIdsObj, oldDevs);
+		if (! generated) {
 			// a missing source would mark its existing devices as obsolete, so keep the old config
 			this.log.warn(sprintf('%-31s %-20s %-50s', 'onReady()', dstId, 'skipped: source failed, yahka devices left unchanged'));
 			return;
 		}
+		const { devices: createdDevs, invalid } = generated;
 		applyDefaults(createdDevs);
 
+		// invalid devices that are new are skipped
+		for (const name of invalid) {
+			if (! oldDevs.some(oldDev => oldDev.name === name)) {
+				this.log.warn(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'skipped invalid', name));
+			}
+		}
+
 		// newDevs
-		const { newDevs, disabled, obsolete, added } = mergeDevices(oldDevs, createdDevs);
+		const { newDevs, disabled, obsolete, added } = mergeDevices(oldDevs, createdDevs, invalid);
 		for (const name of disabled	) { this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'disabled',	name)); }
 		for (const name of obsolete	) { this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'obsolete',	name)); }
 		for (const name of added	) { this.log.info(sprintf('%-31s %-20s %-30s', 'createYahkaConfig()', 'added',		name)); }
@@ -224,10 +235,8 @@ class YahkaConfig extends utils.Adapter {
 		// save
 		if (diffs) {
 			this.log.info(sprintf('%-31s %-20s %-50s %s', 'createYahkaConfig()', dstId, 'saving yahka devices ...', ''));
-			if (yahkaDst.native['bridge']) {
-				(yahkaDst.native['bridge'] as Record<string, unknown>)['devices'] = newDevs;
-				await this.setForeignObject('system.adapter.' + dstId, yahkaDst);
-			}
+			bridge.devices = newDevs;
+			await this.setForeignObject('system.adapter.' + dstId, yahkaDst);
 		}
 	}
 
@@ -235,10 +244,10 @@ class YahkaConfig extends utils.Adapter {
 	/**
 	 * Runs the generator of every enabled source instance.
 	 *
-	 * @returns	all created devices, or undefined if any generator failed
+	 * @returns	all created devices, or undefined if any generator failed or the names are not unique
 	 */
-	private async createDevices(dstId: string, srcIdsObj: Record<string, boolean>, yahkaDst: ioBroker.Object): Promise<AccConfig[] | undefined> {
-		const generators: Record<string, (srcInstId: string, dst: ioBroker.Object) => Promise<AccConfig[]>> = {
+	private async createDevices(dstId: string, srcIdsObj: Record<string, boolean>, oldDevs: AccConfig[]): Promise<Generated | undefined> {
+		const generators: Record<string, (srcInstId: string) => Promise<Generated>> = {
 			'danfossicon':		this.create_danfoss		.bind(this),
 			'fritzdect':		this.create_fritzdect	.bind(this),
 			'rpi-io':			this.create_by_role		.bind(this),
@@ -248,30 +257,49 @@ class YahkaConfig extends utils.Adapter {
 			'zigbee2mqtt':		this.create_zigbee2mqtt	.bind(this),
 		};
 
-		let createdDevs: AccConfig[] = [];
+		const result: Generated = { devices: [], invalid: [] };
 		let failed = false;
 		for (const [ srcInstId, enabled ] of Object.entries(srcIdsObj)) {
 			const create = enabled ? generators[srcInstId.split('.')[0] ?? ''] : undefined;
 			if (create) {
 				try {
-					createdDevs = createdDevs.concat(await create(srcInstId, yahkaDst));
+					const generated = await create(srcInstId);
+
+					// an empty source (adapter stopped, no data yet) would mark all its devices obsolete
+					if (generated.devices.length === 0  &&  generated.invalid.length === 0  &&  oldDevs.some(oldDev => oldDev.name.startsWith(`${srcInstId}.`))) {
+						throw new Error('source returned no devices, but yahka config contains devices of this source');
+					}
+					result.devices.push(...generated.devices);
+					result.invalid.push(...generated.invalid);
 				} catch (err) {
 					failed = true;
 					this.log.error(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, srcInstId, `failed: ${(err as Error).message}`));
 				}
 			}
 		}
-		return failed ? undefined : createdDevs;
+		if (failed) {
+			return undefined;
+		}
+
+		// names must be unique: they build the homekit UUID
+		const names = new Set<string>();
+		for (const { name } of result.devices) {
+			if (names.has(name)) {
+				this.log.error(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, name, 'failed: duplicate accessory name'));
+				failed = true;
+			}
+			names.add(name);
+		}
+		return failed ? undefined : result;
 	}
 
 
 	/**
 	 *
 	 * @param srcInstId
-	 * @param _yahkaDstApt
 	 * @returns
 	 */
-	private async create_tr064(srcInstId: string, _yahkaDstApt: ioBroker.Object): Promise<AccConfig[]> {
+	private async create_tr064(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
 
 		// collect source state objects
@@ -303,17 +331,16 @@ class YahkaConfig extends utils.Adapter {
 			}
 		}
 
-		return accConfigs;
+		return { devices: accConfigs, invalid: [] };
 	}
 
 
 	/**
 	 *
 	 * @param srcInstId
-	 * @param _yahkaDstApt
 	 * @returns
 	 */
-	private async create_fritzdect(srcInstId: string, _yahkaDstApt: ioBroker.Object): Promise<AccConfig[]> {
+	private async create_fritzdect(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
 
 		// fritzdect channels
@@ -349,7 +376,7 @@ class YahkaConfig extends utils.Adapter {
 					accCategory = AccCatId.Thermostat;
 					srvType		= 'Thermostat';
 					characteristics.push(
-						{ 'name': 'TemperatureDisplayUnits',	'inOutFunction': 'const',					'inOutParameters': '0', 								},
+						{ 'name': 'TemperatureDisplayUnits',	'inOutFunction': 'const',					'inOutParameters': 0, 								},
 						{ 'name': 'TargetTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': channel._id+'.tsoll'					},
 						{ 'name': 'CurrentTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': channel._id+'.tist'					},
 						{ 'name': 'TargetHeatingCoolingState',	'inOutFunction': 'const',					'inOutParameters': 3									},
@@ -405,16 +432,15 @@ class YahkaConfig extends utils.Adapter {
 			}
 		}
 
-		return accConfigs;
+		return { devices: accConfigs, invalid: [] };
 	}
 
 	/**
 	 *
 	 * @param srcInstId
-	 * @param _yahkaDstApt
 	 * @returns
 	 */
-	private async create_shelly(srcInstId: string, _yahkaDstApt: ioBroker.Object): Promise<AccConfig[]> {
+	private async create_shelly(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
 
 		// collect source state objects
@@ -462,7 +488,8 @@ class YahkaConfig extends utils.Adapter {
 				// accConfig
 				const accConfig: AccConfig = {
 					'groupString':		srcInstId,				// used by adapter only
-					'name':				name,					// NOTE: yahka adapter uses 'name' to build homekit UUID!
+					'name':				channel._id,			// NOTE: yahka adapter uses 'name' to build homekit UUID!
+					'model':			name,					// visible within iOS home app
 					'category':			accCategory,
 					'manufacturer':		'shelly',				// visible within iOS home app
 					'serial':			idPath.slice(2, 4).join('.'),				// visible within iOS home app
@@ -480,15 +507,14 @@ class YahkaConfig extends utils.Adapter {
 			}
 		}
 
-		return accConfigs;
+		return { devices: accConfigs, invalid: [] };
 	}
 
 	/**
 	 *
 	 * @param srcInstId
-	 * @param _yahkaDstApt
 	 */
-	private async create_by_role(srcInstId: string, _yahkaDstApt: ioBroker.Object): Promise<AccConfig[]> {
+	private async create_by_role(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
 
 		const pinObjs = await this.getForeignObjectsAsync(`${srcInstId}.*`, 'state');
@@ -639,16 +665,15 @@ class YahkaConfig extends utils.Adapter {
 			}
 		}
 
-		return accConfigs;
+		return { devices: accConfigs, invalid: [] };
 	}
 
 
 	/**
 	 *
 	 * @param srcInstId
-	 * @param _yahkaDstApt
 	 */
-	private async create_danfoss(srcInstId: string, _yahkaDstApt: ioBroker.Object): Promise<AccConfig[]> {
+	private async create_danfoss(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
 		const group = srcInstId;										// 'danfossicon.0'
 
@@ -704,8 +729,8 @@ class YahkaConfig extends utils.Adapter {
 					{ 'name': 'Name',						'inOutFunction': 'const',					'inOutParameters': name						},
 					{ 'name': 'TargetTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.TargetTemp'		},
 					{ 'name': 'CurrentTemperature',			'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.RoomTemp'		},
-					{ 'name': 'TemperatureDisplayUnits',	'inOutFunction': 'const',					'inOutParameters': '0', 					},
-					{ 'name': 'TargetHeatingCoolingState',	'inOutFunction': 'const',					'inOutParameters': '3', 					},
+					{ 'name': 'TemperatureDisplayUnits',	'inOutFunction': 'const',					'inOutParameters': 0, 					},
+					{ 'name': 'TargetHeatingCoolingState',	'inOutFunction': 'const',					'inOutParameters': 3, 					},
 					{ 'name': 'CurrentHeatingCoolingState',	'inOutFunction': 'ioBroker.State.OnlyACK',	'inOutParameters': idBase+'.ValveState',
 						'conversionFunction': 'script', 'conversionParameters': { 'toHomeKit': 'return (value) ? 1 : 2;', 'toIOBroker': 'return (value == 1);' }
 					}		// TargetHeatingCoolingState:		0 := OFF, 1 := HEAT, 2 := COOL, 3 := AUTO
@@ -715,18 +740,18 @@ class YahkaConfig extends utils.Adapter {
 			this.log.debug(sprintf('%-30s %-20s %-50s %s', 'create_danfoss()', accService.type, accConfig.name, accService.name));
 		}
 
-		return accConfigs;
+		return { devices: accConfigs, invalid: [] };
 	}
 
 
 	/**
 	 *
 	 * @param srcInstId
-	 * @param _yahkaDstApt
 	 * @returns
 	 */
-	private async create_zigbee2mqtt(srcInstId: string, _yahkaDstApt: ioBroker.Object): Promise<AccConfig[]> {
+	private async create_zigbee2mqtt(srcInstId: string): Promise<Generated> {
 		const accConfigs: AccConfig[] = [];
+		const invalid: string[] = [];
 
 		// zigbeeDevs
 		const zigbeeDevs = await new Promise<ZigbeeDevice[]>((resolve, reject) => {
@@ -761,53 +786,25 @@ class YahkaConfig extends utils.Adapter {
 			if (zigbeeDev) {
 				//this.log.debug(sprintf('%-30s %-20s %-50s\n%s', 'create_zigbee2mqtt()', 'zigbeeDev', '', JSON.stringify(zigbeeDev, null, 4)));
 
-				// zigbeeDev
-				const { ieee_address, network_address, supported, friendly_name, disabled, definition, software_build_id, model_id, interviewing, interview_completed, manufacturer, endpoints } = zigbeeDev;
-				if (typeof ieee_address			!== 'string'	) { throw new Error('device ieee_address must be string'			); }
-				if (typeof network_address		!== 'number'	) { throw new Error('device network_address must be number'			); }
-				if (typeof supported			!== 'boolean'	) { throw new Error('device supported must be boolean'				); }
-				if (typeof friendly_name		!== 'string'	) { throw new Error('device friendly_name must be string'			); }
-				if (typeof disabled				!== 'boolean'	) { throw new Error('device disabled must be boolean'				); }
-				if (typeof definition			!== 'object'	) { throw new Error('device definition must be object'				); }
-				if (typeof model_id				!== 'string'	) { throw new Error('device model_id must be string'				); }
-				if (typeof interviewing			!== 'boolean'	) { throw new Error('device interviewing must be boolean'			); }
-				if (typeof interview_completed	!== 'boolean'	) { throw new Error('device interview_completed must be boolean'	); }
-				if (typeof manufacturer			!== 'string'	) { throw new Error('device manufacturer must be string'			); }
-				if (typeof endpoints			!== 'object'	) { throw new Error('device endpoints must be object'				); }
-
-				// zigbeeDev.definition
-				const { model, vendor, description, exposes, supports_ota, options } = zigbeeDev.definition;
-				if (typeof model				!== 'string'	) { throw new Error('definition model must be string'				); }
-				if (typeof vendor				!== 'string'	) { throw new Error('definition vendor must be string'				); }
-				if (typeof description			!== 'string'	) { throw new Error('definition description must be string'			); }
-				if (typeof exposes				!== 'object'	) { throw new Error('definition exposes must be object'				); }
-				if (typeof supports_ota			!== 'boolean'	) { throw new Error('definition supports_ota must be boolean'		); }
-				if (typeof options				!== 'object'	) { throw new Error('definition options must be object'				); }
-
-				// zigbeeDev.definition.exposes
-				const checkFeature = (feature: ZigbeeFeature): void => {
-					const { access, label, name, type } = feature;
-					if (typeof access		!== 'number') { throw new Error('feature access must be number'		); }
-					if (typeof label		!== 'string') { throw new Error('feature label must be string'		); }
-					if (typeof name			!== 'string') { throw new Error('feature name must be string'		); }
-					if (! [ 'binary', 'numeric', 'enum', 'composite', 'text', 'list' ].includes(type)	) { throw new Error(`invalid feature type ${type}`		); }
-				};
-				for (const expose of exposes) {
-					if ([ 'light', 'composite' ].includes(expose.type)  &&  Array.isArray(expose.features)) {
-						for (const feature of expose.features) {
-							checkFeature(feature);
-						}
-					} else {
-						checkFeature(expose as ZigbeeFeature);
-					}
+				// validate
+				const grpName = idPath.slice(0, 2).join('.');
+				const accName = `${grpName}.${ieeeAdr ?? ''}`;			// NOTE: yahka adapter uses 'name' to build homekit UUID!
+				let definition: NonNullable<ZigbeeDevice['definition']>;
+				try {
+					definition = validateZigbeeDevice(zigbeeDev);
+				} catch (err) {
+					this.log.warn(sprintf('%-30s %-20s %-50s %s', 'create_zigbee2mqtt()', 'invalid', iobDev._id, (err as Error).message));
+					invalid.push(accName);
+					continue;
 				}
+				const { ieee_address, friendly_name, software_build_id, model_id } = zigbeeDev;
+				const { model, vendor, exposes } = definition;
 
 				// accConfig
-				const grpName = idPath.slice(0, 2).join('.');
 				const devName = friendly_name;
 				const accConfig: AccConfig = {
 					'groupString':		grpName,								// used only by iobroker adapter to group accessiries
-					'name':				`${grpName}.${devName}`,				// NOTE: yahka adapter uses 'name' to build homekit UUID!
+					'name':				accName,
 					'model':			devName,								// visible within iOS home app
 					'manufacturer':		`${vendor} ${model_id} (${model})`,		// visible within iOS home app
 					'serial':			ieee_address,							// visible within iOS home app
@@ -816,7 +813,6 @@ class YahkaConfig extends utils.Adapter {
 					'services':			[],
 					'availableState':	`${iobDev._id}.available`,
 				};
-				//this.log.debug(sprintf('%-30s %-20s %-50s\n%s', 'create_zigbee2mqtt()', 'accConfig', '', JSON.stringify(accConfig, null, 4)));
 
 				// typedFeatures, features, featureNames, exposedLight
 				const features		= exposes.filter(expose => 'name'     in expose);
@@ -992,7 +988,7 @@ class YahkaConfig extends utils.Adapter {
 		}
 
 		//this.log.debug(sprintf('%-30s %-20s %-50s\n%s', 'create_zigbee2mqtt()', 'devConfigs', '', JSON.stringify(devConfigs, null, 4)));
-		return accConfigs;
+		return { devices: accConfigs, invalid };
 	}
 
 	/**
@@ -1074,8 +1070,9 @@ function applyDefaults(devs: AccConfig[]): void {
 }
 
 
-// mergeDevices(oldDevs, createdDevs): keeps the order of oldDevs, flags missing ones obsolete, appends new ones
-function mergeDevices(oldDevs: AccConfig[], createdDevs: AccConfig[]): { newDevs: AccConfig[], disabled: string[], obsolete: string[], added: string[] } {
+// mergeDevices(oldDevs, createdDevs, invalid): keeps the order of oldDevs, flags missing ones obsolete,
+// disables invalid ones (names the source reports but cannot generate), appends new ones
+function mergeDevices(oldDevs: AccConfig[], createdDevs: AccConfig[], invalid: string[] = []): { newDevs: AccConfig[], disabled: string[], obsolete: string[], added: string[] } {
 	const newDevs:	AccConfig[]	= [];
 	const disabled:	string[]	= [];
 	const obsolete:	string[]	= [];
@@ -1091,6 +1088,12 @@ function mergeDevices(oldDevs: AccConfig[], createdDevs: AccConfig[]): { newDevs
 				disabled.push(createdDev.name);
 			}
 			newDevs.push(createdDev);
+		} else if (invalid.includes(oldDev.name)) {
+			newDevs.push(Object.assign({}, oldDev, {
+				enabled:		false,
+				groupString:	'~disabled~'
+			}));
+			disabled.push(oldDev.name);
 		} else {
 			newDevs.push(Object.assign({}, oldDev, {
 				enabled:		false,
@@ -1109,6 +1112,35 @@ function mergeDevices(oldDevs: AccConfig[], createdDevs: AccConfig[]): { newDevs
 	}
 
 	return { newDevs, disabled, obsolete, added };
+}
+
+
+// validateZigbeeDevice(dev): returns dev.definition; throws if a field used by create_zigbee2mqtt() is missing or has the wrong type
+function validateZigbeeDevice(dev: ZigbeeDevice): NonNullable<ZigbeeDevice['definition']> {
+	const { ieee_address, friendly_name, software_build_id, model_id, definition } = dev;
+	if (typeof ieee_address		!== 'string'								) { throw new Error('device ieee_address must be string'		); }
+	if (typeof friendly_name	!== 'string'								) { throw new Error('device friendly_name must be string'		); }
+	if (typeof model_id			!== 'string'								) { throw new Error('device model_id must be string'			); }
+	if (software_build_id !== undefined  &&  typeof software_build_id !== 'string'	) { throw new Error('device software_build_id must be string'	); }
+	if (typeof definition		!== 'object'  ||  definition === null		) { throw new Error('device definition must be object'			); }
+
+	const { model, vendor, exposes } = definition;
+	if (typeof model			!== 'string'								) { throw new Error('definition model must be string'			); }
+	if (typeof vendor			!== 'string'								) { throw new Error('definition vendor must be string'			); }
+	if (! Array.isArray(exposes)											) { throw new Error('definition exposes must be array'			); }
+
+	const checkFeature = (feature: ZigbeeFeature): void => {
+		if (typeof feature.name	!== 'string'								) { throw new Error('feature name must be string'				); }
+		if (typeof feature.type	!== 'string'								) { throw new Error('feature type must be string'				); }
+	};
+	for (const expose of exposes) {
+		if (Array.isArray(expose.features)) {
+			expose.features.forEach(checkFeature);
+		} else {
+			checkFeature(expose as ZigbeeFeature);
+		}
+	}
+	return definition;
 }
 
 
