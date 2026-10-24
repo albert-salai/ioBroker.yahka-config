@@ -2,6 +2,11 @@ import * as utils					from '@iobroker/adapter-core';
 import   mqtt 						from 'mqtt';
 import { diff as deepDiff, Diff }	from 'deep-diff';
 import { sprintf }					from 'sprintf-js';
+import * as fs						from 'node:fs';
+import * as path					from 'node:path';
+
+// debug: if set, devices are written to <dir>/<dstId>.json instead of saving any ioBroker object
+const DRYRUN_DIR = process.env['YAHKA_CONFIG_DRYRUN'];
 
 // mqtt used to get ZigbeeDevice list
 // state roles:						see https://www.iobroker.net/#en/documentation/dev/stateroles.md
@@ -208,6 +213,13 @@ class YahkaConfig extends utils.Adapter {
 		// log diffs between oldDevs and newDevs
 		const diffs = deepDiff(oldDevs, newDevs);
 		this.logDiffs('createYahkaConfig()', diffs ?? []);
+
+		// dry run
+		if (DRYRUN_DIR) {
+			fs.mkdirSync(DRYRUN_DIR, { recursive: true });
+			fs.writeFileSync(path.join(DRYRUN_DIR, `${dstId}.json`), JSON.stringify(newDevs, null, '\t'));
+			return;
+		}
 
 		// save
 		if (diffs) {
@@ -1026,7 +1038,9 @@ class YahkaConfig extends utils.Adapter {
 
 					// write newObj
 					//this.log.debug(sprintf('%-30s %-20s %-50s %s', 'enableHistory()', 'common', stateId, JSON.stringify(common, null, 4)));
-					await this.setForeignObject(stateId, newObj);
+					if (! DRYRUN_DIR) {
+						await this.setForeignObject(stateId, newObj);
+					}
 				}
 			}
 		}
