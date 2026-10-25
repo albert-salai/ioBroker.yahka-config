@@ -235,7 +235,7 @@ export async function createZigbee2mqtt({ adapter, srcInstId }: GeneratorContext
 					}
 				}
 
-				accConfig.category = AccCatId.Lightbulb;
+				accConfig.category = AccCatId.LIGHTBULB;
 				accConfig.services.push({
 					'type': 'Lightbulb',
 					'subType': '',
@@ -247,7 +247,7 @@ export async function createZigbee2mqtt({ adapter, srcInstId }: GeneratorContext
 			} else {
 				const sensor = SENSOR_MAP.find(sensor => featureNames.includes(sensor.primaryFeature));
 				if (sensor) {
-					accConfig.category = AccCatId.Sensor;
+					accConfig.category = AccCatId.SENSOR;
 					for (const feature of features) {
 						const linked = Object.hasOwn(sensor.linked, feature.name ?? '') ? sensor.linked[feature.name ?? ''] : undefined;
 						if (feature.name === sensor.primaryFeature) {

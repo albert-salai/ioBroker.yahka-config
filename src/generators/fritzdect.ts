@@ -11,7 +11,7 @@ import { constChar, onlyAck, sortBy } from '../lib/helpers';
 //		CurrentHeatingCoolingState:	0 := OFF, 1 := HEAT, 2 := COOL
 const FRITZ_MAP: Record<string, { category: string, type: string, characteristics: (id: string) => SrvCharacteristic[], historyIds: string[] }> = {
 	'FRITZ!DECT Repeater 100': {
-		category: AccCatId.Sensor,
+		category: AccCatId.SENSOR,
 		type: 'TemperatureSensor',
 		characteristics: id => [
 			onlyAck('CurrentTemperature', `${id}.celsius`),
@@ -19,7 +19,7 @@ const FRITZ_MAP: Record<string, { category: string, type: string, characteristic
 		historyIds: [ 'celsius' ],
 	},
 	'FRITZ!Smart Energy 200': {
-		category: AccCatId.Switch,
+		category: AccCatId.SWITCH,
 		type: 'Switch',
 		characteristics: id => [
 			onlyAck('On', `${id}.state`),
@@ -27,7 +27,7 @@ const FRITZ_MAP: Record<string, { category: string, type: string, characteristic
 		historyIds: [ 'state' ],
 	},
 	'FRITZ!Smart Thermo 301': {
-		category: AccCatId.Thermostat,
+		category: AccCatId.THERMOSTAT,
 		type: 'Thermostat',
 		characteristics: id => [
 			constChar('TemperatureDisplayUnits',	0),

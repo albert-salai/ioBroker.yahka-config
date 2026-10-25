@@ -16,7 +16,7 @@ export async function createTr064({ adapter, srcInstId }: GeneratorContext): Pro
 			const name = objName(state);
 
 			const accConfig: AccConfig = {
-				'category':			AccCatId.Switch,
+				'category':			AccCatId.SWITCH,
 				'name':				state._id,								// NOTE: yahka adapter uses 'name' to build homekit UUID!
 				'manufacturer':		idPath.slice(0,2).join('.'),			// visible within iOS home app
 				'serial':			idPath.slice(2  ).join('.'),			// visible within iOS home app

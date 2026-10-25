@@ -35,7 +35,7 @@ export async function createShelly({ adapter, srcInstId }: GeneratorContext): Pr
 			'groupString':		srcInstId,								// used by adapter only
 			'name':				channel._id,							// NOTE: yahka adapter uses 'name' to build homekit UUID!
 			'model':			name,									// visible within iOS home app
-			'category':			isLight ? AccCatId.Lightbulb : AccCatId.Switch,
+			'category':			isLight ? AccCatId.LIGHTBULB : AccCatId.SWITCH,
 			'manufacturer':		'shelly',								// visible within iOS home app
 			'serial':			idPath.slice(2, 4).join('.'),			// visible within iOS home app
 			'availableState':	`${idPath.slice(0, 3).join('.')}.online`,

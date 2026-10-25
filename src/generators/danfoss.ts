@@ -22,7 +22,7 @@ export async function createDanfoss({ adapter, srcInstId }: GeneratorContext): P
 			'manufacturer':		group,								// visible within iOS home app
 			'model':			name,								// visible within iOS home app
 			'serial':			idPath.slice(2).join('.'),			// visible within iOS home app
-			'category':			AccCatId.Switch,
+			'category':			AccCatId.SWITCH,
 			'services':			[],
 		};
 		const accService: AccService = {
@@ -47,7 +47,7 @@ export async function createDanfoss({ adapter, srcInstId }: GeneratorContext): P
 		const name		= objName(targetTempObj);
 
 		const accConfig: AccConfig = {
-			'category':			AccCatId.Thermostat,
+			'category':			AccCatId.THERMOSTAT,
 			'name':				targetTempObj._id,					// NOTE: yahka adapter uses 'name' to build homekit UUID!
 			'manufacturer':		group,								// visible within iOS home app
 			'serial':			idPath.slice(2).join('.'),			// visible within iOS home app
