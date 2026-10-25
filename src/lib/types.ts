@@ -9,7 +9,7 @@ export interface SrvCharacteristic {
 	name:					string,
 	enabled?:				boolean,
 	inOutFunction:			string,
-	inOutParameters:		string | boolean | number,
+	inOutParameters:		string | boolean | number | { readState: string, writeState?: string }[],
 	conversionFunction?:	string,
 	conversionParameters?:	{ toHomeKit?: string, toIOBroker?: string },
 }

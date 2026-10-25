@@ -5,6 +5,7 @@ import * as fs						from 'node:fs';
 import * as path					from 'node:path';
 import { createByRole }				from './generators/by-role';
 import { createDanfoss }			from './generators/danfoss';
+import { createDreame }				from './generators/dreame';
 import { createFritzdect }			from './generators/fritzdect';
 import { createShelly }				from './generators/shelly';
 import { createTr064 }				from './generators/tr064';
@@ -18,6 +19,7 @@ const DRYRUN_DIR = process.env['YAHKA_CONFIG_DRYRUN'];
 // generators by source adapter name
 const GENERATORS: Record<string, Generator> = {
 	'danfossicon':		createDanfoss,
+	'dreame':			createDreame,
 	'fritzdect':		createFritzdect,
 	'rpi-io':			createByRole,
 	'shelly':			createShelly,

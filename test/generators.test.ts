@@ -2,6 +2,7 @@ import { strict as assert }		from 'node:assert';
 import { describe, it }			from 'node:test';
 import { createByRole }			from '../src/generators/by-role';
 import { createDanfoss }		from '../src/generators/danfoss';
+import { createDreame }			from '../src/generators/dreame';
 import { createFritzdect }		from '../src/generators/fritzdect';
 import { createShelly }			from '../src/generators/shelly';
 import { createTr064 }			from '../src/generators/tr064';
@@ -122,5 +123,30 @@ describe('zigbee2mqtt', () => {
 		assert.deepEqual(zigbeeMqttSettings({ connectionType: 'exmqtt', externalMqttServerIP: '10.0.0.2', externalMqttServerPort: 1884, externalMqttServerCredentials: true, externalMqttServerUsername: 'u', externalMqttServerPassword: 'p' }),
 			{ url: 'mqtt://10.0.0.2:1884', username: 'u', password: 'p', topic: 'zigbee2mqtt/bridge/devices' });
 		assert.deepEqual(zigbeeMqttSettings({ connectionType: 'intmqtt', mqttServerPort: 1885 }), { url: 'mqtt://127.0.0.1:1885', topic: 'zigbee2mqtt/bridge/devices' });
+	});
+});
+
+describe('dreame', () => {
+	it('creates one switch per shortcut and reports shortcuts without dock command as invalid', async () => {
+		const { devices, invalid } = await createDreame({ adapter, srcInstId: 'dreame.0' });
+		assert.deepEqual(devices.map(d => d.name), [ 'dreame.0.-124719312.shortcuts.32', 'dreame.0.-124719312.shortcuts.33' ]);
+		assert.deepEqual(invalid, [ 'dreame.0.-2.shortcuts.5' ]);
+		assert.equal(devices[0]?.availableState, 'dreame.0.-124719312.info.online');
+		const on = devices[0]?.services[0]?.characteristics[0];
+		assert.equal(on?.inOutFunction, 'ioBroker.MultiState');
+		assert.deepEqual(on?.inOutParameters, [
+			{ readState: 'dreame.0.-124719312.shortcuts.32.running', writeState: 'dreame.0.-124719312.shortcuts.32.start' },
+			{ readState: 'dreame.0.-124719312.shortcuts.32.running', writeState: 'dreame.0.-124719312.remote.return-to-dock' },
+		]);
+	});
+	it('writes only the matching state (dreame runs a command for any written value)', async () => {
+		const { devices } = await createDreame({ adapter, srcInstId: 'dreame.0' });
+		const conv = devices[0]?.services[0]?.characteristics[0]?.conversionParameters;
+		const toIO = new Function('value', conv?.toIOBroker ?? '') as (v: boolean) => unknown[];
+		const toHK = new Function('value', conv?.toHomeKit ?? '') as (v: unknown) => boolean;
+		assert.deepEqual(toIO(true),  [ true, undefined ]);
+		assert.deepEqual(toIO(false), [ undefined, true ]);
+		assert.equal(toHK([ true, true ]),  true);
+		assert.equal(toHK([ false, false ]), false);
 	});
 });

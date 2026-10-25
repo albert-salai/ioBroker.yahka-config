@@ -261,6 +261,41 @@
    "common": {
     "name": "climate"
    }
+  },
+  "dreame.0.-124719312.shortcuts.32": {
+   "_id": "dreame.0.-124719312.shortcuts.32",
+   "type": "channel",
+   "common": {
+    "name": "Wohnzimmer"
+   }
+  },
+  "dreame.0.-124719312.shortcuts.33": {
+   "_id": "dreame.0.-124719312.shortcuts.33",
+   "type": "channel",
+   "common": {
+    "name": "Küche"
+   }
+  },
+  "dreame.0.-124719312.shortcuts.32.running": {
+   "_id": "dreame.0.-124719312.shortcuts.32.running",
+   "type": "state",
+   "common": {
+    "name": "Running"
+   }
+  },
+  "dreame.0.-124719312.remote.return-to-dock": {
+   "_id": "dreame.0.-124719312.remote.return-to-dock",
+   "type": "state",
+   "common": {
+    "name": "Return to Dock"
+   }
+  },
+  "dreame.0.-2.shortcuts.5": {
+   "_id": "dreame.0.-2.shortcuts.5",
+   "type": "channel",
+   "common": {
+    "name": "NoDock"
+   }
   }
  },
  "states": {
