@@ -12,11 +12,12 @@ export async function createDreame({ adapter, srcInstId }: GeneratorContext): Pr
 	const accConfigs: AccConfig[] = [];
 	const invalid: string[] = [];
 
-	const channels = Object.values(await adapter.getForeignObjectsAsync(`${srcInstId}.*.shortcuts.*`, 'channel')).sort(sortBy('_id'));
+	// NOTE: a pattern like '<inst>.*.shortcuts.*' finds nothing here (dreame device ids are negative numbers), so filter by id
+	const isShortcut = (id: string): boolean => /^[^.]+\.\d+\.[^.]+\.shortcuts\.[^.]+$/.test(id);		// dreame.0.-124719312.shortcuts.32
+	const channels = Object.values(await adapter.getForeignObjectsAsync(`${srcInstId}.*`, 'channel')).filter(channel => isShortcut(channel._id)).sort(sortBy('_id'));
 
 	for (const channel of channels) {
 		const idPath = channel._id.split('.');					// [ 'dreame', '0', '-124719312', 'shortcuts', '32' ]
-		if (idPath.length !== 5) { continue; }
 		const name	= objName(channel);
 		const devId	= idPath.slice(0, 3).join('.');
 
