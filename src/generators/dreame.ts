@@ -16,6 +16,7 @@ export async function createDreame({ adapter, srcInstId }: GeneratorContext): Pr
 	const isShortcut = (id: string): boolean => /^[^.]+\.\d+\.[^.]+\.shortcuts\.[^.]+$/.test(id);		// dreame.0.-124719312.shortcuts.32
 	const channels = Object.values(await adapter.getForeignObjectsAsync(`${srcInstId}.*`, 'channel')).filter(channel => isShortcut(channel._id)).sort(sortBy('_id'));
 
+	const hasDock = new Map<string, boolean>();					// per device: has 'return-to-dock'?
 	for (const channel of channels) {
 		const idPath = channel._id.split('.');					// [ 'dreame', '0', '-124719312', 'shortcuts', '32' ]
 		const name	= objName(channel);
@@ -23,8 +24,9 @@ export async function createDreame({ adapter, srcInstId }: GeneratorContext): Pr
 
 		// dock command (vacuums only; mowers have no 'return-to-dock')
 		const dockId = `${devId}.remote.return-to-dock`;
-		if (! await adapter.getForeignObjectAsync(dockId)) {
-			adapter.log.debug(sprintf('%-30s %-50s %s', 'create_dreame()', channel._id, 'no return-to-dock found, mower?'));
+		if (! hasDock.has(devId)) { hasDock.set(devId, !! await adapter.getForeignObjectAsync(dockId)); }
+		if (! hasDock.get(devId)) {
+			adapter.log.debug(sprintf('%-31s %-50s %s', 'createDreame()', channel._id, 'no return-to-dock found, mower?'));
 			invalid.push(channel._id);
 			continue;
 		}
@@ -39,7 +41,9 @@ export async function createDreame({ adapter, srcInstId }: GeneratorContext): Pr
 			'serial':			idPath.slice(2).join('.'),	// visible within iOS home app
 			'availableState':	`${devId}.info.online`,
 			'services':			[{
-				'type': 'Switch', 'subType': '', 'name': name,
+				'type': 'Switch',
+				'subType': '',
+				'name': name,
 				'characteristics': [
 					// 'On' needs different states for reading and writing, which plain 'ioBroker.State' cannot do:
 					//		.running		read-only: true while the shortcut runs
@@ -53,8 +57,14 @@ export async function createDreame({ adapter, srcInstId }: GeneratorContext): Pr
 						'name':					'On',
 						'inOutFunction':		'ioBroker.MultiState',
 						'inOutParameters':		[
-							{ 'readState': running, 'writeState': `${channel._id}.start` },
-							{ 'readState': running, 'writeState': dockId },
+							{
+								'readState': running,
+								'writeState': `${channel._id}.start`,
+							},
+							{
+								'readState': running,
+								'writeState': dockId,
+							},
 						],
 						// the scripts translate between the single HomeKit boolean and the MultiState arrays:
 						'conversionFunction':	'script',
@@ -72,7 +82,7 @@ export async function createDreame({ adapter, srcInstId }: GeneratorContext): Pr
 			}],
 		};
 		accConfigs.push(accConfig);
-		adapter.log.debug(sprintf('%-30s %-20s %-50s %s', 'create_dreame()', 'Switch', accConfig.name, name));
+		adapter.log.debug(sprintf('%-31s %-20s %-50s %s', 'createDreame()', 'Switch', accConfig.name, name));
 	}
 
 	return { devices: accConfigs, invalid, historyIds: [] };

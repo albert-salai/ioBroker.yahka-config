@@ -1,6 +1,6 @@
 import type { AccConfig, GeneratorResult } from './types';
 
-// applyDefaults(devs): fills in default accessory fields and enables all characteristics
+// applyDefaults(devs): fills in default accessory fields and enables all characteristics (mutates devs)
 export function applyDefaults(devs: AccConfig[]): void {
 	for (const dev of devs) {
 		Object.assign(dev, Object.assign({
@@ -21,7 +21,9 @@ export function applyDefaults(devs: AccConfig[]): void {
 
 
 // mergeDevices(oldDevs, createdDevs, invalid): keeps the order of oldDevs, flags missing ones obsolete,
-// disables invalid ones (names the source reports but cannot generate), appends new ones
+// disables invalid ones (names the source reports but cannot generate), appends new ones.
+// NOTE: mutates the entries of createdDevs ('enabled', 'groupString').
+// 'disabled' and 'obsolete' list only devices that changed to that state, so repeated runs stay quiet.
 export function mergeDevices(oldDevs: AccConfig[], createdDevs: AccConfig[], invalid: string[] = []): { newDevs: AccConfig[], disabled: string[], obsolete: string[], added: string[] } {
 	const newDevs:	AccConfig[]	= [];
 	const disabled:	string[]	= [];
@@ -35,7 +37,7 @@ export function mergeDevices(oldDevs: AccConfig[], createdDevs: AccConfig[], inv
 			createdDev.enabled = oldDev.enabled ?? false;
 			if (! createdDev.enabled) {
 				createdDev.groupString = '~disabled~';
-				disabled.push(createdDev.name);
+				if (oldDev.groupString !== '~disabled~') { disabled.push(createdDev.name); }
 			}
 			newDevs.push(createdDev);
 		} else if (invalid.includes(oldDev.name)) {
@@ -43,13 +45,13 @@ export function mergeDevices(oldDevs: AccConfig[], createdDevs: AccConfig[], inv
 				enabled:		false,
 				groupString:	'~disabled~'
 			}));
-			disabled.push(oldDev.name);
+			if (oldDev.groupString !== '~disabled~') { disabled.push(oldDev.name); }
 		} else {
 			newDevs.push(Object.assign({}, oldDev, {
 				enabled:		false,
 				groupString:	'~obsolete~'
 			}));
-			obsolete.push(oldDev.name);
+			if (oldDev.groupString !== '~obsolete~') { obsolete.push(oldDev.name); }
 		}
 	}
 

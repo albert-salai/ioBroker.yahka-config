@@ -1,7 +1,7 @@
 import mqtt							from 'mqtt';
 import { sprintf }					from 'sprintf-js';
 import { AccCatId, type AccConfig, type GeneratorContext, type GeneratorResult, type SrvCharacteristic, type ZigbeeDevice, type ZigbeeFeature } from '../lib/types';
-import { batteryService, constChar, onlyAck } from '../lib/helpers';
+import { batteryService, constChar, onlyAck, sortBy } from '../lib/helpers';
 
 
 // ~~~~~~~~~~
@@ -11,21 +11,55 @@ import { batteryService, constChar, onlyAck } from '../lib/helpers';
 // Services are created in the order of the exposed features: primary, linked and battery.
 interface ZigbeeSensor { type: string, characteristic: string, stateSuffix: string }
 const SENSOR_MAP: { primaryFeature: string, primary: ZigbeeSensor, linked: Record<string, ZigbeeSensor & { label: string }> }[] = [
-	{	primaryFeature: 'contact',
-		primary: { type: 'ContactSensor', characteristic: 'ContactSensorState', stateSuffix: 'opened' },
-		linked: {}
+	{
+		primaryFeature: 'contact',
+		primary: {
+			type: 'ContactSensor',
+			characteristic: 'ContactSensorState',
+			stateSuffix: 'opened',
+		},
+		linked: {},
 	},
-	{	primaryFeature: 'water_leak',
-		primary: { type: 'LeakSensor', characteristic: 'LeakDetected', stateSuffix: 'detected' },
-		linked: {}
+	{
+		primaryFeature: 'water_leak',
+		primary: {
+			type: 'LeakSensor',
+			characteristic: 'LeakDetected',
+			stateSuffix: 'detected',
+		},
+		linked: {},
 	},
-	{	primaryFeature: 'occupancy',
-		primary: { type: 'OccupancySensor', characteristic: 'OccupancyDetected', stateSuffix: 'occupancy' },
-		linked: { 'illuminance': { type: 'LightSensor', characteristic: 'CurrentAmbientLightLevel', stateSuffix: 'illuminance', label: 'Helligkeit' } }
+	{
+		primaryFeature: 'occupancy',
+		primary: {
+			type: 'OccupancySensor',
+			characteristic: 'OccupancyDetected',
+			stateSuffix: 'occupancy',
+		},
+		linked: {
+			'illuminance': {
+				type: 'LightSensor',
+				characteristic: 'CurrentAmbientLightLevel',
+				stateSuffix: 'illuminance',
+				label: 'Helligkeit',
+			},
+		},
 	},
-	{	primaryFeature: 'humidity',
-		primary: { type: 'HumiditySensor', characteristic: 'CurrentRelativeHumidity', stateSuffix: 'humidity' },
-		linked: { 'temperature': { type: 'TemperatureSensor', characteristic: 'CurrentTemperature', stateSuffix: 'temperature', label: 'Temperatur' } }
+	{
+		primaryFeature: 'humidity',
+		primary: {
+			type: 'HumiditySensor',
+			characteristic: 'CurrentRelativeHumidity',
+			stateSuffix: 'humidity',
+		},
+		linked: {
+			'temperature': {
+				type: 'TemperatureSensor',
+				characteristic: 'CurrentTemperature',
+				stateSuffix: 'temperature',
+				label: 'Temperatur',
+			},
+		},
 	},
 ];
 
@@ -44,7 +78,10 @@ export function zigbeeMqttSettings(native: Record<string, unknown> | undefined):
 	const num = (key: string): number | undefined => (typeof native?.[key] === 'number') ? native[key] : undefined;
 
 	const baseTopic	= str('baseTopic') ?? 'zigbee2mqtt';
-	const settings: MqttSettings = { url: 'mqtt://127.0.0.1:1883', topic: `${baseTopic}/bridge/devices` };
+	const settings: MqttSettings = {
+		url:	'mqtt://127.0.0.1:1883',
+		topic:	`${baseTopic}/bridge/devices`,
+	};
 
 	if (native?.['connectionType'] === 'exmqtt'  &&  str('externalMqttServerIP')) {
 		settings.url = `mqtt://${str('externalMqttServerIP') ?? ''}:${String(num('externalMqttServerPort') ?? 1883)}`;
@@ -68,29 +105,32 @@ export function fetchZigbeeDevices(settings: MqttSettings): Promise<ZigbeeDevice
 		if (settings.username !== undefined) { options.username = settings.username; }
 		if (settings.password !== undefined) { options.password = settings.password; }
 		const client = mqtt.connect(settings.url, options);
+		let done = false;
 		const finish = (err?: Error, devs?: ZigbeeDevice[]): void => {
+			if (done) { return; }								// timeout, error and message may race
+			done = true;
 			clearTimeout(timer);
 			client.end();
 			if (err) { reject(err); } else { resolve(devs ?? []); }
 		};
 		const timer = setTimeout(() => { finish(new Error(`timeout waiting for ${settings.topic}`)); }, 10000);
 		client.on('error', (err: Error) => { finish(err); });
-		client.on('connect', (_pkt: mqtt.IConnackPacket) => {
-			client
-				.on('message', (_topic: string, payload: Buffer, _pkt: mqtt.IPublishPacket) => {
-					try {
-						finish(undefined, JSON.parse(payload.toString()) as ZigbeeDevice[]);
-					} catch (err) {
-						finish(err as Error);
-					}
-				})
-				.subscribe(settings.topic);
+		client.on('message', (_topic: string, payload: Buffer, _pkt: mqtt.IPublishPacket) => {
+			try {
+				finish(undefined, JSON.parse(payload.toString()) as ZigbeeDevice[]);
+			} catch (err) {
+				finish(err as Error);
+			}
+		});
+		// subscribe on every (re)connect, the message listener above is registered only once
+		client.on('connect', () => {
+			client.subscribe(settings.topic, (err) => { if (err) { finish(err); } });
 		});
 	});
 }
 
 
-// validateZigbeeDevice(dev): returns dev.definition; throws if a field used by create_zigbee2mqtt() is missing or has the wrong type
+// validateZigbeeDevice(dev): returns dev.definition; throws if a field used by createZigbee2mqtt() is missing or has the wrong type
 export function validateZigbeeDevice(dev: ZigbeeDevice): NonNullable<ZigbeeDevice['definition']> {
 	const { ieee_address, friendly_name, software_build_id, model_id, definition } = dev;
 	if (typeof ieee_address		!== 'string'								) { throw new Error('device ieee_address must be string'		); }
@@ -119,6 +159,9 @@ export function validateZigbeeDevice(dev: ZigbeeDevice): NonNullable<ZigbeeDevic
 }
 
 
+// createZigbee2mqtt: one accessory per zigbee2mqtt device (Lightbulb, or sensor + linked sensor + Battery, see SENSOR_MAP).
+// Device details come from the retained mqtt message 'bridge/devices'; 'fetchDevices' can be replaced for tests.
+// Accessory name is '<srcInstId>.<ieee address>', so it survives renaming a device.
 export async function createZigbee2mqtt({ adapter, srcInstId }: GeneratorContext, fetchDevices = fetchZigbeeDevices): Promise<GeneratorResult> {
 	const accConfigs: AccConfig[] = [];
 	const historyIds: string[] = [];
@@ -128,22 +171,22 @@ export async function createZigbee2mqtt({ adapter, srcInstId }: GeneratorContext
 	const sourceObj		= await adapter.getForeignObjectAsync(`system.adapter.${srcInstId}`);
 	const zigbeeDevs	= await fetchDevices(zigbeeMqttSettings(sourceObj?.native));
 
-	// mqttDevs
+	// iobDevs
 	const iobDevs = await adapter.getForeignObjectsAsync(`${srcInstId}.*`, 'device');
-	for (const iobDev of Object.values(iobDevs)) {
+	for (const iobDev of Object.values(iobDevs).sort(sortBy('_id'))) {
 		const idPath	= iobDev._id.split('.');			// [ 'zigbee2mqtt', '0', '0x680ae2fffe14a2cb' ]
-		const ieeeAdr	= idPath.slice(-1)[0];
-		const zigbeeDev	= zigbeeDevs.find(dev => (dev.ieee_address === ieeeAdr));
+		const ieeeAddress	= idPath.slice(-1)[0];
+		const zigbeeDev	= zigbeeDevs.find(dev => (dev.ieee_address === ieeeAddress));
 		if (zigbeeDev) {
 
 			// validate
-			const grpName = idPath.slice(0, 2).join('.');
-			const accName = `${grpName}.${ieeeAdr ?? ''}`;			// NOTE: yahka adapter uses 'name' to build homekit UUID!
+			const group = idPath.slice(0, 2).join('.');
+			const accName = `${group}.${ieeeAddress ?? ''}`;			// NOTE: yahka adapter uses 'name' to build homekit UUID!
 			let definition: NonNullable<ZigbeeDevice['definition']>;
 			try {
 				definition = validateZigbeeDevice(zigbeeDev);
 			} catch (err) {
-				adapter.log.warn(sprintf('%-30s %-20s %-50s %s', 'create_zigbee2mqtt()', 'invalid', iobDev._id, (err as Error).message));
+				adapter.log.warn(sprintf('%-31s %-20s %-50s %s', 'createZigbee2mqtt()', 'invalid', iobDev._id, (err as Error).message));
 				invalid.push(accName);
 				continue;
 			}
@@ -153,13 +196,13 @@ export async function createZigbee2mqtt({ adapter, srcInstId }: GeneratorContext
 			// accConfig
 			const devName = friendly_name;
 			const accConfig: AccConfig = {
-				'groupString':		grpName,								// used only by iobroker adapter to group accessiries
+				'groupString':		group,								// used only by iobroker adapter to group accessories
 				'name':				accName,
 				'model':			devName,								// visible within iOS home app
 				'manufacturer':		`${vendor} ${model_id} (${model})`,		// visible within iOS home app
 				'serial':			ieee_address,							// visible within iOS home app
 				'firmware':			software_build_id  ??  'n/a',			// visible within iOS home app
-				'category':			'',										// accCatIds[expose.type]
+				'category':			'',										// set below, '' = no supported service
 				'services':			[],
 				'availableState':	`${iobDev._id}.available`,
 			};
@@ -184,6 +227,7 @@ export async function createZigbee2mqtt({ adapter, srcInstId }: GeneratorContext
 						characteristics.push(onlyAck('ColorTemperature', `${iobDev._id}.colortemp`, {
 							'conversionFunction':	'script',
 							'conversionParameters': {
+								// clamp to 153 mired, the lowest color temperature (coldest white) that is passed on
 								'toHomeKit':		'return Math.max(153, value)',
 								'toIOBroker':		'return Math.max(153, value)'
 							}
@@ -193,7 +237,10 @@ export async function createZigbee2mqtt({ adapter, srcInstId }: GeneratorContext
 
 				accConfig.category = AccCatId.Lightbulb;
 				accConfig.services.push({
-					'type': 'Lightbulb', 'subType': '', 'name': devName, 'characteristics':	characteristics
+					'type': 'Lightbulb',
+					'subType': '',
+					'name': devName,
+					'characteristics':	characteristics
 				});
 
 			// Service sensor (+ linked sensor + Battery)
@@ -206,13 +253,18 @@ export async function createZigbee2mqtt({ adapter, srcInstId }: GeneratorContext
 						if (feature.name === sensor.primaryFeature) {
 							const { type, characteristic, stateSuffix } = sensor.primary;
 							accConfig.services.push({
-								'type': type, 'subType': '', 'name': devName, 'characteristics': [ onlyAck(characteristic, `${iobDev._id}.${stateSuffix}`) ],
+								'type': type,
+								'subType': '',
+								'name': devName,
+								'characteristics': [ onlyAck(characteristic, `${iobDev._id}.${stateSuffix}`) ],
 								'isPrimary': true
 							});
 						}
 						if (linked) {
 							accConfig.services.push({
-								'type': linked.type, 'subType': '', 'name': `${devName} ${linked.label}`,
+								'type': linked.type,
+								'subType': '',
+								'name': `${devName} ${linked.label}`,
 								'characteristics': [ onlyAck(linked.characteristic, `${iobDev._id}.${linked.stateSuffix}`) ],
 								'linkTo': devName
 							});
@@ -235,7 +287,7 @@ export async function createZigbee2mqtt({ adapter, srcInstId }: GeneratorContext
 				// add Name characteristic to every service
 				for (const accService of accConfig.services) {
 					accService.characteristics.push(constChar('Name', accService.name));
-					adapter.log.debug(sprintf('%-30s %-20s %-50s %s', 'create_zigbee2mqtt()', accService.type, accConfig.name, accService.name));
+					adapter.log.debug(sprintf('%-31s %-20s %-50s %s', 'createZigbee2mqtt()', accService.type, accConfig.name, accService.name));
 				}
 
 				// add accessory
@@ -245,5 +297,4 @@ export async function createZigbee2mqtt({ adapter, srcInstId }: GeneratorContext
 	}
 
 	return { devices: accConfigs, invalid, historyIds };
-
 }

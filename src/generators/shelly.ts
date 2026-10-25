@@ -3,8 +3,8 @@ import { AccCatId, type AccConfig, type AccService, type SrvCharacteristic, type
 import { constChar, objName, onlyAck, sortBy } from '../lib/helpers';
 
 
-
-
+// createShelly: a Switch per relay channel (<inst>.*.Relay*) and a Lightbulb per light channel (<inst>.*.lights);
+// a device is unavailable while its '<device>.online' state is false
 export async function createShelly({ adapter, srcInstId }: GeneratorContext): Promise<GeneratorResult> {
 	const accConfigs: AccConfig[] = [];
 	const historyIds: string[] = [];
@@ -16,11 +16,11 @@ export async function createShelly({ adapter, srcInstId }: GeneratorContext): Pr
 
 	// channels
 	for (const channel of channels) {
-		const idPath	= channel._id.split('.');					// [ 'shelly', '0', 'SHDM-2#94B97E16BE61#1',	'lights' ]
-		const name	= objName(channel);		// [ 'shelly', '0', 'SHPLG-S#6A0761#1',			'Relay0' ]
+		const idPath	= channel._id.split('.');					// [ 'shelly', '0', 'SHDM-2#94B97E16BE61#1', 'lights' ] or [ 'shelly', '0', 'SHPLG-S#6A0761#1', 'Relay0' ]
+		const name		= objName(channel);
 
 		// accCategory, srvType, characteristics
-		let accCategory								= '';			//accCatIds[expose.type]
+		let accCategory								= '';			// AccCatId
 		let srvType									= '';
 		const characteristics: SrvCharacteristic[]	= [];
 
@@ -50,7 +50,7 @@ export async function createShelly({ adapter, srcInstId }: GeneratorContext): Pr
 				'model':			name,					// visible within iOS home app
 				'category':			accCategory,
 				'manufacturer':		'shelly',				// visible within iOS home app
-				'serial':			idPath.slice(2, 4).join('.'),				// visible within iOS home app
+				'serial':			idPath.slice(2, 4).join('.'),			// visible within iOS home app
 				'availableState':	`${idPath.slice(0, 3).join('.')}.online`,
 				'services':			[],
 			};
@@ -58,13 +58,15 @@ export async function createShelly({ adapter, srcInstId }: GeneratorContext): Pr
 
 			// accService
 			const accService: AccService = {
-				'type': srvType, 'subType': '', 'name': name, 'characteristics':	characteristics
+				'type': srvType,
+				'subType': '',
+				'name': name,
+				'characteristics': characteristics
 			};
 			accConfig.services.push(accService);
-			adapter.log.debug(sprintf('%-30s %-20s %-50s %s', 'create_shelly()', accService.type, accConfig.name, accService.name));
+			adapter.log.debug(sprintf('%-31s %-20s %-50s %s', 'createShelly()', accService.type, accConfig.name, accService.name));
 		}
 	}
 
 	return { devices: accConfigs, invalid: [], historyIds };
-
 }

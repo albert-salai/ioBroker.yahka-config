@@ -4,7 +4,7 @@ import type * as utils from '@iobroker/adapter-core';
 // homekit services:				see https://github.com/homebridge/HAP-NodeJS/blob/latest/src/lib/definitions/ServiceDefinitions.ts
 // homekit characteristics:			see https://github.com/homebridge/HAP-NodeJS/blob/latest/src/lib/definitions/CharacteristicDefinitions.ts
 
-// SrvCharacteristic
+// SrvCharacteristic: one yahka characteristic of a service
 export interface SrvCharacteristic {
 	name:					string,
 	enabled?:				boolean,
@@ -14,7 +14,7 @@ export interface SrvCharacteristic {
 	conversionParameters?:	{ toHomeKit?: string, toIOBroker?: string },
 }
 
-// AccService
+// AccService: one yahka service of an accessory
 export interface AccService {
 	type:					string,
 	subType:				string,
@@ -24,12 +24,12 @@ export interface AccService {
 	linkTo?:				string,			// primary service name
 }
 
-// AccConfig
+// AccConfig: one yahka accessory ('name' builds the homekit UUID and must stay stable)
 export interface AccConfig {
 	name:					string,
 	category:				string,
 	services:				AccService[],
-	groupString:			string
+	groupString:			string,
 	configType?:			string,
 	manufacturer?:			string,
 	model?:					string,
@@ -86,7 +86,7 @@ export interface GeneratorResult {
 	historyIds:				string[],			// state ids to enable history for
 }
 
-// Generator
+// Generator: creates the yahka accessories of one source instance
 export type Generator = (ctx: GeneratorContext) => Promise<GeneratorResult>;
 
 
@@ -131,4 +131,4 @@ export const AccCatId = {
 	'VIDEO_DOORBELL':		'18',
 	'Window':				'13',
 	'Window_covering':		'14'
-};
+} as const;

@@ -46,7 +46,11 @@ class YahkaConfig extends utils.Adapter {
 	 */
 	private async onReady(): Promise<void> {
 		try {
-			const mapping = this.config.mapping;
+			const mapping = this.config.mapping as ConfigMapping | undefined;		// missing until configured
+			if (! mapping) {
+				this.log.warn(sprintf('%-31s %-50s', 'onReady()', 'skipped: config.mapping missing'));
+				return;
+			}
 
 			// historyId
 			const systemConfig = await this.getForeignObjectAsync('system.config');
@@ -55,13 +59,13 @@ class YahkaConfig extends utils.Adapter {
 			}
 
 			// yahka dstId
-			for (const [ dstId, srcIdsObj ] of Object.entries(mapping)) {
+			for (const [ dstId, srcEnabled ] of Object.entries(mapping)) {
 				try {
 					const yahkaDst = await this.getForeignObjectAsync('system.adapter.' + dstId);
 					if (! yahkaDst) {
 						this.log.warn(sprintf('%-31s %-20s %-50s', 'onReady()', ('system.adapter.'+dstId), 'not installed'));
 					} else {
-						await this.updateYahkaDevices(dstId, srcIdsObj, yahkaDst);
+						await this.updateYahkaDevices(dstId, srcEnabled, yahkaDst);
 					}
 				} catch (err) {
 					this.log.error(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, 'failed', (err as Error).message));
@@ -80,11 +84,11 @@ class YahkaConfig extends utils.Adapter {
 	 * Regenerates the devices of one yahka instance and saves them if they changed.
 	 *
 	 * @param dstId		yahka instance, e.g. 'yahka.0'
-	 * @param srcIdsObj	source instances mapped to their enabled flag
+	 * @param srcEnabled	source instances mapped to their enabled flag
 	 * @param yahkaDst	object 'system.adapter.<dstId>'
 	 */
-	private async updateYahkaDevices(dstId: string, srcIdsObj: Record<string, boolean>, yahkaDst: ioBroker.Object): Promise<void> {
-		for (const [ srcInstId, enabled ] of Object.entries(srcIdsObj)) {
+	private async updateYahkaDevices(dstId: string, srcEnabled: ConfigMapping[string], yahkaDst: ioBroker.Object): Promise<void> {
+		for (const [ srcInstId, enabled ] of Object.entries(srcEnabled)) {
 			this.log.info(sprintf('%-31s %-20s %-50s %s', 'updateYahkaDevices()', dstId, srcInstId, (enabled ? 'enabled' : 'skipped')));
 		}
 
@@ -100,7 +104,7 @@ class YahkaConfig extends utils.Adapter {
 		const oldDevs: AccConfig[] = bridge.devices ?? [];
 
 		// createdDevs
-		const generated = await this.createDevices(dstId, srcIdsObj, oldDevs);
+		const generated = await this.createDevices(dstId, srcEnabled, oldDevs);
 		if (! generated) {
 			// a missing source would mark its existing devices as obsolete, so keep the old config
 			this.log.warn(sprintf('%-31s %-20s %-50s', 'updateYahkaDevices()', dstId, 'skipped: source failed, yahka devices left unchanged'));
@@ -150,12 +154,15 @@ class YahkaConfig extends utils.Adapter {
 	/**
 	 * Runs the generator of every enabled source instance.
 	 *
+	 * @param dstId		yahka instance, e.g. 'yahka.0'
+	 * @param srcEnabled	source instances mapped to their enabled flag
+	 * @param oldDevs	devices currently configured in yahka
 	 * @returns	all created devices, or undefined if any generator failed or the names are not unique
 	 */
-	private async createDevices(dstId: string, srcIdsObj: Record<string, boolean>, oldDevs: AccConfig[]): Promise<GeneratorResult | undefined> {
+	private async createDevices(dstId: string, srcEnabled: ConfigMapping[string], oldDevs: AccConfig[]): Promise<GeneratorResult | undefined> {
 		const result: GeneratorResult = { devices: [], invalid: [], historyIds: [] };
 		let failed = false;
-		for (const [ srcInstId, enabled ] of Object.entries(srcIdsObj)) {
+		for (const [ srcInstId, enabled ] of Object.entries(srcEnabled)) {
 			const adapterName = srcInstId.split('.')[0] ?? '';
 			const create = (enabled  &&  Object.hasOwn(GENERATORS, adapterName)) ? GENERATORS[adapterName] : undefined;
 			if (create) {
@@ -202,6 +209,11 @@ class YahkaConfig extends utils.Adapter {
 		}
 	}
 
+	/**
+	 * Enables history for a state, using the system default history instance.
+	 *
+	 * @param stateId	state to enable history for
+	 */
 	private async enableHistory(stateId: string): Promise<void> {
 		if (this.historyId) {
 			const oldObj = await this.getForeignObjectAsync(stateId);
@@ -209,7 +221,7 @@ class YahkaConfig extends utils.Adapter {
 				this.log.warn(sprintf('%-31s %-20s %-50s', 'enableHistory()', 'missing', stateId));
 
 			} else {
-				const newObj		= JSON.parse(JSON.stringify(oldObj)) as typeof oldObj;
+				const newObj		= structuredClone(oldObj);
 				newObj.common.custom = newObj.common.custom ?? {};				// attach, otherwise a missing entry is lost
 				const newCustom		= newObj.common.custom;
 				const newHistory	= (newCustom[this.historyId]	?? {}) as Record<string, unknown>;
@@ -232,6 +244,7 @@ class YahkaConfig extends utils.Adapter {
 
 	/**
 	 * Is called when adapter shuts down - callback has to be called under any circumstances!
+	 * Nothing to clean up: generators close their own connections (e.g. mqtt).
 	 */
 	private onUnload(callback: () => void): void {
 		callback();

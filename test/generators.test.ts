@@ -62,16 +62,16 @@ describe('shelly, tr064, danfoss', () => {
 		assert.deepEqual(devices.map(d => d.name), [ 'shelly.0.SHDM-2#94B97E16BE61#1.lights', 'shelly.0.SHPLG-S#6A0761#1.Relay0' ]);
 		assert.deepEqual(devices.map(d => d.model), [ 'Dimmer', 'Plug' ]);
 	});
-	it('tr064 only exposes boolean states that are not wlan', async () => {
+	it('tr064 only exposes boolean states (wlan included)', async () => {
 		const { devices } = await createTr064({ adapter, srcInstId: 'tr-064.0' });
-		assert.deepEqual(devices.map(d => d.name), [ 'tr-064.0.states.dnd', 'tr-064.0.states.wps' ]);
+		assert.deepEqual(devices.map(d => d.name), [ 'tr-064.0.states.dnd', 'tr-064.0.states.wlan', 'tr-064.0.states.wps' ]);
 	});
 	it('danfoss creates HousePause and thermostats with numeric constants', async () => {
 		const { devices } = await createDanfoss({ adapter, srcInstId: 'danfossicon.0' });
 		assert.equal(devices.length, 3);
-		const chars = devices[1]?.services[0]?.characteristics;
-		assert.equal(chars?.find(c => c.name === 'TemperatureDisplayUnits')?.inOutParameters, 0);
-		assert.equal(chars?.find(c => c.name === 'TargetHeatingCoolingState')?.inOutParameters, 3);
+		const characteristics = devices[1]?.services[0]?.characteristics;
+		assert.equal(characteristics?.find(c => c.name === 'TemperatureDisplayUnits')?.inOutParameters, 0);
+		assert.equal(characteristics?.find(c => c.name === 'TargetHeatingCoolingState')?.inOutParameters, 3);
 	});
 });
 
