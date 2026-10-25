@@ -1,7 +1,7 @@
 import mqtt							from 'mqtt';
 import { sprintf }					from 'sprintf-js';
-import { AccCatId, type AccConfig, type GeneratorContext, type GeneratorResult, type SrvCharacteristic, type ZigbeeDevice, type ZigbeeFeature } from '../types';
-import { batteryService, constChar, onlyAck } from '../helpers';
+import { AccCatId, type AccConfig, type GeneratorContext, type GeneratorResult, type SrvCharacteristic, type ZigbeeDevice, type ZigbeeFeature } from '../lib/types';
+import { batteryService, constChar, onlyAck } from '../lib/helpers';
 
 
 // ~~~~~~~~~~

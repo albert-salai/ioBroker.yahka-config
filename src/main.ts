@@ -3,12 +3,12 @@ import { diff as deepDiff, Diff }	from 'deep-diff';
 import { sprintf }					from 'sprintf-js';
 import * as fs						from 'node:fs';
 import * as path					from 'node:path';
-import { createByRole }				from './lib/generators/by-role';
-import { createDanfoss }			from './lib/generators/danfoss';
-import { createFritzdect }			from './lib/generators/fritzdect';
-import { createShelly }				from './lib/generators/shelly';
-import { createTr064 }				from './lib/generators/tr064';
-import { createZigbee2mqtt }		from './lib/generators/zigbee2mqtt';
+import { createByRole }				from './generators/by-role';
+import { createDanfoss }			from './generators/danfoss';
+import { createFritzdect }			from './generators/fritzdect';
+import { createShelly }				from './generators/shelly';
+import { createTr064 }				from './generators/tr064';
+import { createZigbee2mqtt }		from './generators/zigbee2mqtt';
 import { applyDefaults, assertSourceNotEmpty, duplicateNames, mergeDevices } from './lib/merge';
 import type { AccConfig, Generator, GeneratorResult } from './lib/types';
 

@@ -1,6 +1,6 @@
 import { sprintf }				from 'sprintf-js';
-import { AccCatId, type AccConfig, type AccService, type SrvCharacteristic, type GeneratorContext, type GeneratorResult } from '../types';
-import { constChar, onlyAck } from '../helpers';
+import { AccCatId, type AccConfig, type AccService, type SrvCharacteristic, type GeneratorContext, type GeneratorResult } from '../lib/types';
+import { constChar, onlyAck } from '../lib/helpers';
 
 
 // ~~~~~~~~~

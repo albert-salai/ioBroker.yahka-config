@@ -1,6 +1,6 @@
 import { sprintf }				from 'sprintf-js';
-import { AccCatId, type AccConfig, type AccService, type GeneratorContext, type GeneratorResult } from '../types';
-import { constChar, objName, onlyAck, sortBy } from '../helpers';
+import { AccCatId, type AccConfig, type AccService, type GeneratorContext, type GeneratorResult } from '../lib/types';
+import { constChar, objName, onlyAck, sortBy } from '../lib/helpers';
 
 
 

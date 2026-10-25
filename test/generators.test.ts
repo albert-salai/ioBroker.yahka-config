@@ -1,11 +1,11 @@
 import { strict as assert }		from 'node:assert';
 import { describe, it }			from 'node:test';
-import { createByRole }			from '../src/lib/generators/by-role';
-import { createDanfoss }		from '../src/lib/generators/danfoss';
-import { createFritzdect }		from '../src/lib/generators/fritzdect';
-import { createShelly }			from '../src/lib/generators/shelly';
-import { createTr064 }			from '../src/lib/generators/tr064';
-import { createZigbee2mqtt, validateZigbeeDevice, zigbeeMqttSettings } from '../src/lib/generators/zigbee2mqtt';
+import { createByRole }			from '../src/generators/by-role';
+import { createDanfoss }		from '../src/generators/danfoss';
+import { createFritzdect }		from '../src/generators/fritzdect';
+import { createShelly }			from '../src/generators/shelly';
+import { createTr064 }			from '../src/generators/tr064';
+import { createZigbee2mqtt, validateZigbeeDevice, zigbeeMqttSettings } from '../src/generators/zigbee2mqtt';
 import type { GeneratorAdapter, ZigbeeDevice } from '../src/lib/types';
 import fixtures					from './fixtures.json';
 
