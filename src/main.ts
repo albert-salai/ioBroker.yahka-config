@@ -1,15 +1,16 @@
-import * as utils					from '@iobroker/adapter-core';
-import { diff as deepDiff, Diff }	from 'deep-diff';
-import { sprintf }					from 'sprintf-js';
-import * as fs						from 'node:fs';
-import * as path					from 'node:path';
-import { createByRole }				from './generators/by-role';
-import { createDanfoss }			from './generators/danfoss';
-import { createDreame }				from './generators/dreame';
-import { createFritzdect }			from './generators/fritzdect';
-import { createShelly }				from './generators/shelly';
-import { createTr064 }				from './generators/tr064';
-import { createZigbee2mqtt }		from './generators/zigbee2mqtt';
+import * as utils from '@iobroker/adapter-core';
+import type { Diff } from 'deep-diff';
+import { diff as deepDiff } from 'deep-diff';
+import { sprintf } from 'sprintf-js';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { createByRole } from './generators/by-role';
+import { createDanfoss } from './generators/danfoss';
+import { createDreame } from './generators/dreame';
+import { createFritzdect } from './generators/fritzdect';
+import { createShelly } from './generators/shelly';
+import { createTr064 } from './generators/tr064';
+import { createZigbee2mqtt } from './generators/zigbee2mqtt';
 import { applyDefaults, assertSourceNotEmpty, duplicateNames, mergeDevices } from './lib/merge';
 import type { AccConfig, Generator, GeneratorResult } from './lib/types';
 
@@ -18,16 +19,15 @@ const DRYRUN_DIR = process.env['YAHKA_CONFIG_DRYRUN'];
 
 // generators by source adapter name
 const GENERATORS: Record<string, Generator> = {
-	'danfossicon':		createDanfoss,
-	'dreame':			createDreame,
-	'fritzdect':		createFritzdect,
-	'rpi-io':			createByRole,
-	'shelly':			createShelly,
-	'switchboard-io':	createByRole,
-	'tr-064':			createTr064,
-	'zigbee2mqtt':		createZigbee2mqtt,
+	danfossicon: createDanfoss,
+	dreame: createDreame,
+	fritzdect: createFritzdect,
+	'rpi-io': createByRole,
+	shelly: createShelly,
+	'switchboard-io': createByRole,
+	'tr-064': createTr064,
+	zigbee2mqtt: createZigbee2mqtt,
 };
-
 
 // ~~~~~~~~~~~
 // YahkaConfig
@@ -36,8 +36,8 @@ class YahkaConfig extends utils.Adapter {
 	private historyId = '';
 
 	public constructor(compactOptions?: { logLevel: string; compactInstance: number; compact: true }) {
-		super({ 'name': 'yahka-config', ...compactOptions });
-		this.on('ready',  this.onReady .bind(this));
+		super({ name: 'yahka-config', ...compactOptions });
+		this.on('ready', this.onReady.bind(this));
 		this.on('unload', this.onUnload.bind(this));
 	}
 
@@ -46,8 +46,8 @@ class YahkaConfig extends utils.Adapter {
 	 */
 	private async onReady(): Promise<void> {
 		try {
-			const mapping = this.config.mapping as ConfigMapping | undefined;		// missing until configured
-			if (! mapping) {
+			const mapping = this.config.mapping as ConfigMapping | undefined; // missing until configured
+			if (!mapping) {
 				this.log.warn(sprintf('%-31s %-50s', 'onReady()', 'skipped: config.mapping missing'));
 				return;
 			}
@@ -59,16 +59,20 @@ class YahkaConfig extends utils.Adapter {
 			}
 
 			// yahka dstId
-			for (const [ dstId, srcEnabled ] of Object.entries(mapping)) {
+			for (const [dstId, srcEnabled] of Object.entries(mapping)) {
 				try {
-					const yahkaDst = await this.getForeignObjectAsync('system.adapter.' + dstId);
-					if (! yahkaDst) {
-						this.log.warn(sprintf('%-31s %-20s %-50s', 'onReady()', ('system.adapter.'+dstId), 'not installed'));
+					const yahkaDst = await this.getForeignObjectAsync(`system.adapter.${dstId}`);
+					if (!yahkaDst) {
+						this.log.warn(
+							sprintf('%-31s %-20s %-50s', 'onReady()', `system.adapter.${dstId}`, 'not installed'),
+						);
 					} else {
 						await this.updateYahkaDevices(dstId, srcEnabled, yahkaDst);
 					}
 				} catch (err) {
-					this.log.error(sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, 'failed', (err as Error).message));
+					this.log.error(
+						sprintf('%-31s %-20s %-50s %s', 'onReady()', dstId, 'failed', (err as Error).message),
+					);
 				}
 			}
 		} catch (err) {
@@ -79,7 +83,6 @@ class YahkaConfig extends utils.Adapter {
 		}
 	}
 
-
 	/**
 	 * Regenerates the devices of one yahka instance and saves them if they changed.
 	 *
@@ -87,16 +90,30 @@ class YahkaConfig extends utils.Adapter {
 	 * @param srcEnabled	source instances mapped to their enabled flag
 	 * @param yahkaDst	object 'system.adapter.<dstId>'
 	 */
-	private async updateYahkaDevices(dstId: string, srcEnabled: ConfigMapping[string], yahkaDst: ioBroker.Object): Promise<void> {
-		for (const [ srcInstId, enabled ] of Object.entries(srcEnabled)) {
-			this.log.info(sprintf('%-31s %-20s %-50s %s', 'updateYahkaDevices()', dstId, srcInstId, (enabled ? 'enabled' : 'skipped')));
+	private async updateYahkaDevices(
+		dstId: string,
+		srcEnabled: ConfigMapping[string],
+		yahkaDst: ioBroker.Object,
+	): Promise<void> {
+		for (const [srcInstId, enabled] of Object.entries(srcEnabled)) {
+			this.log.info(
+				sprintf(
+					'%-31s %-20s %-50s %s',
+					'updateYahkaDevices()',
+					dstId,
+					srcInstId,
+					enabled ? 'enabled' : 'skipped',
+				),
+			);
 		}
 
 		// bridge
 		const native = yahkaDst.native as Record<string, unknown>;
 		const bridge = native['bridge'] as { devices?: AccConfig[] } | undefined;
-		if (! bridge) {
-			this.log.warn(sprintf('%-31s %-20s %-50s', 'updateYahkaDevices()', dstId, 'skipped: native.bridge missing'));
+		if (!bridge) {
+			this.log.warn(
+				sprintf('%-31s %-20s %-50s', 'updateYahkaDevices()', dstId, 'skipped: native.bridge missing'),
+			);
 			return;
 		}
 
@@ -105,9 +122,16 @@ class YahkaConfig extends utils.Adapter {
 
 		// createdDevs
 		const generated = await this.createDevices(dstId, srcEnabled, oldDevs);
-		if (! generated) {
+		if (!generated) {
 			// a missing source would mark its existing devices as obsolete, so keep the old config
-			this.log.warn(sprintf('%-31s %-20s %-50s', 'updateYahkaDevices()', dstId, 'skipped: source failed, yahka devices left unchanged'));
+			this.log.warn(
+				sprintf(
+					'%-31s %-20s %-50s',
+					'updateYahkaDevices()',
+					dstId,
+					'skipped: source failed, yahka devices left unchanged',
+				),
+			);
 			return;
 		}
 		const { devices: createdDevs, invalid, historyIds } = generated;
@@ -120,16 +144,22 @@ class YahkaConfig extends utils.Adapter {
 
 		// invalid devices that are new are skipped
 		for (const name of invalid) {
-			if (! oldDevs.some(oldDev => oldDev.name === name)) {
+			if (!oldDevs.some(oldDev => oldDev.name === name)) {
 				this.log.warn(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'skipped invalid', name));
 			}
 		}
 
 		// newDevs
 		const { newDevs, disabled, obsolete, added } = mergeDevices(oldDevs, createdDevs, invalid);
-		for (const name of disabled	) { this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'disabled',	name)); }
-		for (const name of obsolete	) { this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'obsolete',	name)); }
-		for (const name of added	) { this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'added',		name)); }
+		for (const name of disabled) {
+			this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'disabled', name));
+		}
+		for (const name of obsolete) {
+			this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'obsolete', name));
+		}
+		for (const name of added) {
+			this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'added', name));
+		}
 
 		// log diffs between oldDevs and newDevs
 		const diffs = deepDiff(oldDevs, newDevs);
@@ -144,12 +174,13 @@ class YahkaConfig extends utils.Adapter {
 
 		// save
 		if (diffs) {
-			this.log.info(sprintf('%-31s %-20s %-50s %s', 'updateYahkaDevices()', dstId, 'saving yahka devices ...', ''));
+			this.log.info(
+				sprintf('%-31s %-20s %-50s %s', 'updateYahkaDevices()', dstId, 'saving yahka devices ...', ''),
+			);
 			bridge.devices = newDevs;
-			await this.setForeignObject('system.adapter.' + dstId, yahkaDst);
+			await this.setForeignObject(`system.adapter.${dstId}`, yahkaDst);
 		}
 	}
-
 
 	/**
 	 * Runs the generator of every enabled source instance.
@@ -159,12 +190,16 @@ class YahkaConfig extends utils.Adapter {
 	 * @param oldDevs	devices currently configured in yahka
 	 * @returns	all created devices, or undefined if any generator failed or the names are not unique
 	 */
-	private async createDevices(dstId: string, srcEnabled: ConfigMapping[string], oldDevs: AccConfig[]): Promise<GeneratorResult | undefined> {
+	private async createDevices(
+		dstId: string,
+		srcEnabled: ConfigMapping[string],
+		oldDevs: AccConfig[],
+	): Promise<GeneratorResult | undefined> {
 		const result: GeneratorResult = { devices: [], invalid: [], historyIds: [] };
 		let failed = false;
-		for (const [ srcInstId, enabled ] of Object.entries(srcEnabled)) {
+		for (const [srcInstId, enabled] of Object.entries(srcEnabled)) {
 			const adapterName = srcInstId.split('.')[0] ?? '';
-			const create = (enabled  &&  Object.hasOwn(GENERATORS, adapterName)) ? GENERATORS[adapterName] : undefined;
+			const create = enabled && Object.hasOwn(GENERATORS, adapterName) ? GENERATORS[adapterName] : undefined;
 			if (create) {
 				try {
 					const generated = await create({ adapter: this, srcInstId });
@@ -175,7 +210,15 @@ class YahkaConfig extends utils.Adapter {
 					result.historyIds.push(...generated.historyIds);
 				} catch (err) {
 					failed = true;
-					this.log.error(sprintf('%-31s %-20s %-50s %s', 'createDevices()', dstId, srcInstId, `failed: ${(err as Error).message}`));
+					this.log.error(
+						sprintf(
+							'%-31s %-20s %-50s %s',
+							'createDevices()',
+							dstId,
+							srcInstId,
+							`failed: ${(err as Error).message}`,
+						),
+					);
 				}
 			}
 		}
@@ -185,7 +228,9 @@ class YahkaConfig extends utils.Adapter {
 
 		// names must be unique: they build the homekit UUID
 		for (const name of duplicateNames(result.devices)) {
-			this.log.error(sprintf('%-31s %-20s %-50s %s', 'createDevices()', dstId, name, 'failed: duplicate accessory name'));
+			this.log.error(
+				sprintf('%-31s %-20s %-50s %s', 'createDevices()', dstId, name, 'failed: duplicate accessory name'),
+			);
 			failed = true;
 		}
 		return failed ? undefined : result;
@@ -200,11 +245,31 @@ class YahkaConfig extends utils.Adapter {
 	private logDiffs(caller: string, diffs: Diff<unknown>[]): void {
 		for (const diff of diffs) {
 			if (diff.path) {
-				const pathStr = diff.path.map((val) => (typeof val === 'number' ? `[${String(val)}]` : `.${String(val)}`)).join('');
-				if		(diff.kind === 'N')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					caller, 'added',   pathStr, JSON.stringify(diff.rhs))); }
-				else if (diff.kind === 'D')		{ this.log.info(sprintf('%-31s %-20s %-30s %s',					caller, 'deleted', pathStr, JSON.stringify(diff.lhs))); }
-				else if (diff.kind === 'E')		{ this.log.info(sprintf('%-31s %-20s %-30s %-20s --> %-10s',	caller, 'edited',  pathStr, JSON.stringify(diff.lhs), JSON.stringify(diff.rhs))); }
-				else /*  diff.kind === 'A' */	{ this.log.info(sprintf('%-31s %-20s %-30s %s',					caller, 'changed', pathStr, JSON.stringify(diff.item))); }
+				const pathStr = diff.path
+					.map(val => (typeof val === 'number' ? `[${String(val)}]` : `.${String(val)}`))
+					.join('');
+				if (diff.kind === 'N') {
+					this.log.info(sprintf('%-31s %-20s %-30s %s', caller, 'added', pathStr, JSON.stringify(diff.rhs)));
+				} else if (diff.kind === 'D') {
+					this.log.info(
+						sprintf('%-31s %-20s %-30s %s', caller, 'deleted', pathStr, JSON.stringify(diff.lhs)),
+					);
+				} else if (diff.kind === 'E') {
+					this.log.info(
+						sprintf(
+							'%-31s %-20s %-30s %-20s --> %-10s',
+							caller,
+							'edited',
+							pathStr,
+							JSON.stringify(diff.lhs),
+							JSON.stringify(diff.rhs),
+						),
+					);
+				} else /*  diff.kind === 'A' */ {
+					this.log.info(
+						sprintf('%-31s %-20s %-30s %s', caller, 'changed', pathStr, JSON.stringify(diff.item)),
+					);
+				}
 			}
 		}
 	}
@@ -219,12 +284,11 @@ class YahkaConfig extends utils.Adapter {
 			const oldObj = await this.getForeignObjectAsync(stateId);
 			if (oldObj?.type !== 'state') {
 				this.log.warn(sprintf('%-31s %-20s %-50s', 'enableHistory()', 'missing', stateId));
-
 			} else {
-				const newObj		= structuredClone(oldObj);
-				newObj.common.custom = newObj.common.custom ?? {};				// attach, otherwise a missing entry is lost
-				const newCustom		= newObj.common.custom;
-				const newHistory	= (newCustom[this.historyId]	?? {}) as Record<string, unknown>;
+				const newObj = structuredClone(oldObj);
+				newObj.common.custom = newObj.common.custom ?? {}; // attach, otherwise a missing entry is lost
+				const newCustom = newObj.common.custom;
+				const newHistory = (newCustom[this.historyId] ?? {}) as Record<string, unknown>;
 				newHistory['enabled'] = true;
 				newCustom[this.historyId] = newHistory;
 
@@ -234,7 +298,7 @@ class YahkaConfig extends utils.Adapter {
 					this.logDiffs('enableHistory()', diffs);
 
 					// write newObj
-					if (! DRYRUN_DIR) {
+					if (!DRYRUN_DIR) {
 						await this.setForeignObject(stateId, newObj);
 					}
 				}
@@ -245,19 +309,21 @@ class YahkaConfig extends utils.Adapter {
 	/**
 	 * Is called when adapter shuts down - callback has to be called under any circumstances!
 	 * Nothing to clean up: generators close their own connections (e.g. mqtt).
+	 *
+	 * @param callback
 	 */
 	private onUnload(callback: () => void): void {
 		callback();
 	}
 }
 
-
 if (require.main !== module) {
-	module.exports = (compactOptions: {		// compact mode: host calls this factory instead of spawning a process
-		logLevel:			string;
-		compactInstance:	number;
-		compact:			true
+	module.exports = (compactOptions: {
+		// compact mode: host calls this factory instead of spawning a process
+		logLevel: string;
+		compactInstance: number;
+		compact: true;
 	}) => new YahkaConfig(compactOptions);
 } else {
-	(() => new YahkaConfig())();			// standalone process: start directly
+	(() => new YahkaConfig())(); // standalone process: start directly
 }
