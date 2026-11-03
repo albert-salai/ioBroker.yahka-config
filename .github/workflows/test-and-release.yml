@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: ioBroker/testing-action-check@v2.0.1
         with:
-          node-version: '22.x'
+          node-version: '24.x'
           # Uncomment the following line if your adapter cannot be installed using 'npm ci'
           # install-command: 'npm install'
           type-checking: true
@@ -45,7 +45,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        node-version: [22.x, 24.x]
+        node-version: [24.x]
         os: [ubuntu-24.04-arm]
 
     steps:
@@ -57,7 +57,6 @@ jobs:
           # install-command: 'npm install'
           build: true
           # No test/ scaffolding is set up for this adapter
-          integration-test-command: 'echo "No integration tests configured, skipping..."'
 
 # TODO: To enable automatic npm releases, create a token on npmjs.org 
 # Enter this token as a GitHub secret (with name NPM_TOKEN) in the repository options
@@ -82,7 +81,7 @@ jobs:
 #    steps:
 #      - uses: ioBroker/testing-action-deploy@v1
 #        with:
-#          node-version: '22.x'
+#          node-version: '24.x'
 #          # Uncomment the following line if your adapter cannot be installed using 'npm ci'
 #          # install-command: 'npm install'
 #          build: true
