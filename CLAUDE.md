@@ -19,5 +19,7 @@
 - Debug: `YAHKA_CONFIG_DRYRUN=<dir>` writes new devices to `<dir>/<dstId>.json` and saves no ioBroker object (also skips history writes).
 - Dreame (`src/generators/dreame.ts`): one Switch per shortcut, vacuums only (needs `<did>.remote.return-to-dock`; mowers have `remote.start-charge` instead and are skipped as invalid). `On` uses yahka `ioBroker.MultiState` (array parameter, not JSON text) with scripts: On writes `[true, undefined]` (press `.start`), Off writes `[undefined, true]` (press `return-to-dock`). The dreame adapter runs a command for ANY written value, so never write `false`; yahka skips `undefined` elements. `.running` (read-only) is the read state. `availableState` is `<did>.info.online`.
 
+- Integration test allows exit code 11 (the adapter stops itself until its next scheduled run)
+
 ---
 *Last updated: 2026-10-25*
