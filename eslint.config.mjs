@@ -1,31 +1,41 @@
-import eslint		from '@eslint/js';
-import tseslint		from 'typescript-eslint';
+// ioBroker eslint configuration with strict type-checked typescript-eslint rules
+import config from '@iobroker/eslint-config';
+import tseslint from 'typescript-eslint';
 
 export default [
+	...config,
 	{
+		// specify files to exclude from linting here
 		ignores: [
-			"build/",
-			"build-test/",
-			"test/",
-			"admin/",
-		]
+			'.dev-server/',
+			'.vscode/',
+			'*.test.js',
+			'test/**/*.js',
+			'*.config.mjs',
+			'build',
+			'dist',
+			'admin/words.js',
+			'admin/admin.d.ts',
+			'admin/blockly.js',
+			'**/adapter-config.d.ts',
+			'admin/index_m.js',
+			'widgets/**/*.js'
+		],
 	},
-	eslint.configs.recommended,
 	...tseslint.configs.strictTypeChecked,
 	...tseslint.configs.stylisticTypeChecked,
 	{
 		languageOptions: {
 			parserOptions: {
-				projectService:		true,
-				tsconfigRootDir:	import.meta.dirname,
+				tsconfigRootDir: import.meta.dirname,
 			},
 		},
 		rules: {
 			'@typescript-eslint/no-unused-vars': ['error', {
-				argsIgnorePattern:	'^_',
-				varsIgnorePattern:	'^_',
-				caughtErrors:		'none',
+				argsIgnorePattern: '^_',
+				varsIgnorePattern: '^_',
+				caughtErrors: 'none',
 			}],
-		}
-	}
+		},
+	},
 ];

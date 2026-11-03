@@ -1,13 +1,12 @@
 import { strict as assert }		from 'node:assert';
-import { describe, it }			from 'node:test';
-import { createByRole }			from '../src/generators/by-role';
-import { createDanfoss }		from '../src/generators/danfoss';
-import { createDreame }			from '../src/generators/dreame';
-import { createFritzdect }		from '../src/generators/fritzdect';
-import { createShelly }			from '../src/generators/shelly';
-import { createTr064 }			from '../src/generators/tr064';
-import { createZigbee2mqtt, validateZigbeeDevice, zigbeeMqttSettings } from '../src/generators/zigbee2mqtt';
-import type { GeneratorAdapter, ZigbeeDevice } from '../src/lib/types';
+import { createByRole }			from './generators/by-role';
+import { createDanfoss }		from './generators/danfoss';
+import { createDreame }			from './generators/dreame';
+import { createFritzdect }		from './generators/fritzdect';
+import { createShelly }			from './generators/shelly';
+import { createTr064 }			from './generators/tr064';
+import { createZigbee2mqtt, validateZigbeeDevice, zigbeeMqttSettings } from './generators/zigbee2mqtt';
+import type { GeneratorAdapter, ZigbeeDevice } from './lib/types';
 import fixtures					from './fixtures.json';
 
 // fake adapter serving the fixture objects

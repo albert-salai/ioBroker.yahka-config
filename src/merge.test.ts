@@ -1,7 +1,6 @@
 import { strict as assert }		from 'node:assert';
-import { describe, it }			from 'node:test';
-import { applyDefaults, assertSourceNotEmpty, duplicateNames, mergeDevices } from '../src/lib/merge';
-import type { AccConfig }		from '../src/lib/types';
+import { applyDefaults, assertSourceNotEmpty, duplicateNames, mergeDevices } from './lib/merge';
+import type { AccConfig }		from './lib/types';
 
 function dev(name: string, extra: Partial<AccConfig> = {}): AccConfig {
 	return { name, category: '5', services: [], groupString: 'src.0', ...extra };
