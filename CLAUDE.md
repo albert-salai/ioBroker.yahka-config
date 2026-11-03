@@ -14,7 +14,8 @@
 ## Code Layout & Testing
 - `src/main.ts` — adapter class only (orchestration); `src/lib/` — `types`, `helpers`, `merge`; `admin/index_m.js` (`srcAdapters` = list of source adapters shown as checkboxes, must include every generator); `src/generators/*` (one per source adapter, shared `Generator` signature returning `{devices, invalid, historyIds}`).
 - Accessory `name` builds the HomeKit UUID and must stay stable: always `<srcInstId>.<stable id>` (zigbee: ieee address, not friendly name).
-- `npm test` compiles `src` + `test` to `build-test/` and runs `node:test` with fixtures in `test/fixtures.json`.
+- `npm test` runs mocha (tsx) on `src/**/*.test.ts` with fixtures in `src/fixtures.json`; `npm run verify` mirrors CI.
+- Setup rules: `~/.claude/rules/iobroker-adapter.md`. B-EXTRAS: `release-script` (`npm run release`); `admin/index_m.js` is excluded from lint (untyped legacy admin UI).
 - Debug: `YAHKA_CONFIG_DRYRUN=<dir>` writes new devices to `<dir>/<dstId>.json` and saves no ioBroker object (also skips history writes).
 - Dreame (`src/generators/dreame.ts`): one Switch per shortcut, vacuums only (needs `<did>.remote.return-to-dock`; mowers have `remote.start-charge` instead and are skipped as invalid). `On` uses yahka `ioBroker.MultiState` (array parameter, not JSON text) with scripts: On writes `[true, undefined]` (press `.start`), Off writes `[undefined, true]` (press `return-to-dock`). The dreame adapter runs a command for ANY written value, so never write `false`; yahka skips `undefined` elements. `.running` (read-only) is the read state. `availableState` is `<did>.info.online`.
 

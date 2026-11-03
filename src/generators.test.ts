@@ -39,7 +39,7 @@ const adapter = {
 } as unknown as GeneratorAdapter;
 
 const zigbeeDevs = fixtures.zigbeeDevs as unknown as ZigbeeDevice[];
-const zigbee = (devs: ZigbeeDevice[] = zigbeeDevs) =>
+const zigbee = (devs: ZigbeeDevice[] = zigbeeDevs): ReturnType<typeof createZigbee2mqtt> =>
 	createZigbee2mqtt({ adapter, srcInstId: 'zigbee2mqtt.0' }, () => Promise.resolve(devs));
 
 describe('create_by_role (ROLE_MAP)', () => {
@@ -66,8 +66,8 @@ describe('create_by_role (ROLE_MAP)', () => {
 			lock?.characteristics.map(c => c.name),
 			['Name', 'LockTargetState', 'LockCurrentState'],
 		);
-		assert.equal(lock?.characteristics[2]?.inOutParameters, 'rpi-io.0.pin.g_status');
-		assert.equal(lock?.characteristics[1]?.conversionFunction, 'invert');
+		assert.equal(lock.characteristics[2]?.inOutParameters, 'rpi-io.0.pin.g_status');
+		assert.equal(lock.characteristics[1]?.conversionFunction, 'invert');
 	});
 });
 
@@ -86,7 +86,7 @@ describe('fritzdect', () => {
 		]);
 		const thermo = devices[2]?.services[0]?.characteristics;
 		assert.equal(thermo?.at(-1)?.name, 'Name');
-		assert.equal(thermo?.find(c => c.name === 'TargetHeatingCoolingState')?.inOutParameters, 3);
+		assert.equal(thermo.find(c => c.name === 'TargetHeatingCoolingState')?.inOutParameters, 3);
 	});
 });
 
@@ -114,7 +114,7 @@ describe('shelly, tr064, danfoss', () => {
 		assert.equal(devices.length, 3);
 		const characteristics = devices[1]?.services[0]?.characteristics;
 		assert.equal(characteristics?.find(c => c.name === 'TemperatureDisplayUnits')?.inOutParameters, 0);
-		assert.equal(characteristics?.find(c => c.name === 'TargetHeatingCoolingState')?.inOutParameters, 3);
+		assert.equal(characteristics.find(c => c.name === 'TargetHeatingCoolingState')?.inOutParameters, 3);
 	});
 });
 
@@ -129,7 +129,8 @@ describe('zigbee2mqtt', () => {
 	});
 	it('creates lightbulb and sensor services (+ linked, battery) in expose order', async () => {
 		const { devices } = await zigbee();
-		const services = (name: string) => devices.find(d => d.name === name)?.services.map(s => s.type);
+		const services = (name: string): string[] | undefined =>
+			devices.find(d => d.name === name)?.services.map(s => s.type);
 		assert.deepEqual(services('zigbee2mqtt.0.0xa1'), ['Lightbulb']);
 		assert.deepEqual(services('zigbee2mqtt.0.0xa2'), ['ContactSensor', 'Battery']);
 		assert.deepEqual(services('zigbee2mqtt.0.0xa3'), ['LeakSensor', 'Battery']);
@@ -156,7 +157,8 @@ describe('zigbee2mqtt', () => {
 		assert.ok(!historyIds.includes('zigbee2mqtt.0.0xa3.link_quality'));
 	});
 	it('validateZigbeeDevice rejects bad fields', () => {
-		const good = zigbeeDevs[0]!;
+		const good = zigbeeDevs[0];
+		assert.ok(good);
 		assert.doesNotThrow(() => validateZigbeeDevice(good));
 		assert.throws(() => validateZigbeeDevice({ ...good, definition: null }));
 		assert.throws(() => validateZigbeeDevice({ ...good, friendly_name: 1 as unknown as string }));
@@ -201,9 +203,9 @@ describe('dreame', () => {
 		);
 		assert.deepEqual(invalid, ['dreame.0.-2.shortcuts.5']);
 		assert.equal(devices[0]?.availableState, 'dreame.0.-124719312.info.online');
-		const on = devices[0]?.services[0]?.characteristics[0];
+		const on = devices[0].services[0]?.characteristics[0];
 		assert.equal(on?.inOutFunction, 'ioBroker.MultiState');
-		assert.deepEqual(on?.inOutParameters, [
+		assert.deepEqual(on.inOutParameters, [
 			{
 				readState: 'dreame.0.-124719312.shortcuts.32.running',
 				writeState: 'dreame.0.-124719312.shortcuts.32.start',
@@ -217,7 +219,10 @@ describe('dreame', () => {
 	it('writes only the matching state (dreame runs a command for any written value)', async () => {
 		const { devices } = await createDreame({ adapter, srcInstId: 'dreame.0' });
 		const conv = devices[0]?.services[0]?.characteristics[0]?.conversionParameters;
+		// the conversion code is stored as text in the yahka config and evaluated by yahka
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
 		const toIO = new Function('value', conv?.toIOBroker ?? '') as (v: boolean) => unknown[];
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
 		const toHK = new Function('value', conv?.toHomeKit ?? '') as (v: unknown) => boolean;
 		assert.deepEqual(toIO(true), [true, undefined]);
 		assert.deepEqual(toIO(false), [undefined, true]);

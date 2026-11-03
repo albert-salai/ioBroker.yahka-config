@@ -93,7 +93,7 @@ class YahkaConfig extends utils.Adapter {
 	private async updateYahkaDevices(
 		dstId: string,
 		srcEnabled: ConfigMapping[string],
-		yahkaDst: ioBroker.Object,
+		yahkaDst: ioBroker.AdapterObject,
 	): Promise<void> {
 		for (const [srcInstId, enabled] of Object.entries(srcEnabled)) {
 			this.log.info(

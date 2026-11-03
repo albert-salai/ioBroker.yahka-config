@@ -48,8 +48,12 @@
       "Albert Salai <albert2013@salai.de>"
     ],
     "keywords": [],
-    "license": "MIT",
+    "licenseInformation": {
+      "type": "free",
+      "license": "MIT"
+    },
     "platform": "Javascript/Node.js",
+    "tier": 3,
     "icon": "yahka-config.png",
     "enabled": true,
     "extIcon": "https://raw.githubusercontent.com/albert-salai/ioBroker.yahka-config/main/admin/yahka-config.png",
@@ -74,8 +78,7 @@
       {
         "admin": ">=5.0.0"
       }
-    ],
-    "installedFrom": "file:my_modules/ioBroker.yahka-config"
+    ]
   },
   "native": {
     "mapping": {}

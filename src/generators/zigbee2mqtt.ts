@@ -128,12 +128,15 @@ export function fetchZigbeeDevices(settings: MqttSettings): Promise<ZigbeeDevice
 		}
 		const client = mqtt.connect(settings.url, options);
 		let done = false;
+		const timers: {
+			timeout?: ReturnType<typeof setTimeout>;
+		} = {};
 		const finish = (err?: Error, devs?: ZigbeeDevice[]): void => {
 			if (done) {
 				return;
 			} // timeout, error and message may race
 			done = true;
-			clearTimeout(timer);
+			clearTimeout(timers.timeout);
 			client.end();
 			if (err) {
 				reject(err);
@@ -141,7 +144,7 @@ export function fetchZigbeeDevices(settings: MqttSettings): Promise<ZigbeeDevice
 				resolve(devs ?? []);
 			}
 		};
-		const timer = setTimeout(() => {
+		timers.timeout = setTimeout(() => {
 			finish(new Error(`timeout waiting for ${settings.topic}`));
 		}, 10000);
 		client.on('error', (err: Error) => {

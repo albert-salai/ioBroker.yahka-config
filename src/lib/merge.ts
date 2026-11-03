@@ -1,9 +1,6 @@
 import type { AccConfig, GeneratorResult } from './types';
 
 // applyDefaults(devs): fills in default accessory fields and enables all characteristics (mutates devs)
-/**
- *
- */
 export function applyDefaults(devs: AccConfig[]): void {
 	for (const dev of devs) {
 		Object.assign(
@@ -32,29 +29,14 @@ export function applyDefaults(devs: AccConfig[]): void {
 // disables invalid ones (names the source reports but cannot generate), appends new ones.
 // NOTE: mutates the entries of createdDevs ('enabled', 'groupString').
 // 'disabled' and 'obsolete' list only devices that changed to that state, so repeated runs stay quiet.
-/**
- *
- */
 export function mergeDevices(
 	oldDevs: AccConfig[],
 	createdDevs: AccConfig[],
 	invalid: string[] = [],
 ): {
-	/**
-	 *
-	 */
 	newDevs: AccConfig[];
-	/**
-	 *
-	 */
 	disabled: string[];
-	/**
-	 *
-	 */
 	obsolete: string[];
-	/**
-	 *
-	 */
 	added: string[];
 } {
 	const newDevs: AccConfig[] = [];
@@ -110,9 +92,6 @@ export function mergeDevices(
 
 // assertSourceNotEmpty(srcInstId, generated, oldDevs): an empty source (adapter stopped, no data yet)
 // would mark all its devices obsolete, so it counts as a failure while the old config has devices of it
-/**
- *
- */
 export function assertSourceNotEmpty(srcInstId: string, generated: GeneratorResult, oldDevs: AccConfig[]): void {
 	if (
 		generated.devices.length === 0 &&
@@ -124,9 +103,6 @@ export function assertSourceNotEmpty(srcInstId: string, generated: GeneratorResu
 }
 
 // duplicateNames(devs): names used by more than one device (they build the homekit UUID)
-/**
- *
- */
 export function duplicateNames(devs: AccConfig[]): string[] {
 	const seen = new Set<string>();
 	const duplicates = new Set<string>();

@@ -25,14 +25,14 @@ describe('mergeDevices', () => {
 		const { newDevs, obsolete } = mergeDevices(oldDevs, [dev('a')]);
 		assert.deepEqual(obsolete, ['gone']);
 		assert.equal(newDevs[1]?.enabled, false);
-		assert.equal(newDevs[1]?.groupString, '~obsolete~');
+		assert.equal(newDevs[1].groupString, '~obsolete~');
 	});
 
 	it('keeps a disabled device disabled and moves it to ~disabled~', () => {
 		const { newDevs, disabled } = mergeDevices([dev('a', { enabled: false })], [dev('a')]);
 		assert.deepEqual(disabled, ['a']);
 		assert.equal(newDevs[0]?.enabled, false);
-		assert.equal(newDevs[0]?.groupString, '~disabled~');
+		assert.equal(newDevs[0].groupString, '~disabled~');
 	});
 
 	it('treats an old device without enabled as disabled', () => {
@@ -47,8 +47,8 @@ describe('mergeDevices', () => {
 		assert.deepEqual(disabled, ['z']);
 		assert.deepEqual(obsolete, []);
 		assert.equal(newDevs[0]?.model, 'old');
-		assert.equal(newDevs[0]?.enabled, false);
-		assert.equal(newDevs[0]?.groupString, '~disabled~');
+		assert.equal(newDevs[0].enabled, false);
+		assert.equal(newDevs[0].groupString, '~disabled~');
 		assert.equal(old.enabled, true, 'old entry must not be modified');
 	});
 
