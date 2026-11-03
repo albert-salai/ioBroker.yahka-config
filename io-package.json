@@ -50,7 +50,6 @@
     "keywords": [],
     "license": "MIT",
     "platform": "Javascript/Node.js",
-    "main": "build/main.js",
     "icon": "yahka-config.png",
     "enabled": true,
     "extIcon": "https://raw.githubusercontent.com/albert-salai/ioBroker.yahka-config/main/admin/yahka-config.png",
