@@ -1,5 +1,8 @@
 # No dot-directories except github/vscode
 .*/
+!.claude/
+.claude/*
+!.claude/rules/
 !.vscode/
 !.github/
 
