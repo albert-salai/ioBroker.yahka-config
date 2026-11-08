@@ -2,7 +2,7 @@
 
 **Purpose:** project facts, traps and the index of the lazy files for this adapter.
 
-**Audience:** every Claude Code session in this repo.
+**Audience:** every AGENT in this repo.
 
 **Contains:** project facts, code layout, traps, setup extras, the lazy-file table; short imperative rules.
 
