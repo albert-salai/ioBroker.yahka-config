@@ -7,7 +7,7 @@ paths:
 
 **Purpose:** traps of single generators.
 
-**Audience:** Claude sessions editing `src/generators/**` (loaded when such a file is read).
+**Audience:** AGENTS editing `src/generators/**` (loaded when such a file is read).
 
 **Contains:** one paragraph per generator; imperative.
 
