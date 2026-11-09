@@ -19,7 +19,7 @@
 		// This is necessary for the automatic typing of the adapter config
 		"resolveJsonModule": true,
 
-		// mocha globals for the tests
+		// @tsconfig/node24 restricts "types" to ["node"]; add mocha for src/**/*.test.ts globals
 		"types": ["node", "mocha"],
 
 		// If you want to disable the stricter type checks (not recommended), uncomment the following line

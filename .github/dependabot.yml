@@ -4,9 +4,10 @@ updates:
     directory: "/"
     schedule:
       interval: monthly
-      time: "04:00"
+      day: 3
+      time: "00:05"
       timezone: Europe/Berlin
-    open-pull-requests-limit: 20
+    open-pull-requests-limit: 5
     assignees:
       - albert-salai
     versioning-strategy: increase
@@ -15,13 +16,26 @@ updates:
         versions: [">=7"]
       - dependency-name: "@types/node"
         versions: [">=25"]
+      - dependency-name: "chai"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "chai-as-promised"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "sinon-chai"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/chai"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/chai-as-promised"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/sinon-chai"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: monthly
-      time: "04:00"
+      day: 3
+      time: "00:05"
       timezone: Europe/Berlin
-    open-pull-requests-limit: 20
+    open-pull-requests-limit: 5
     assignees:
       - albert-salai

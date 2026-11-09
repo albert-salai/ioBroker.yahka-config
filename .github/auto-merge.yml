@@ -1,8 +1,11 @@
 # Rules for the iobroker-bot-orga/action-automerge-dependabot workflow.
-# Patch updates auto-merge for production deps; patch and minor for dev deps.
+# Patch updates auto-merge for production deps (minor too for security fixes); patch and minor for dev deps.
 - match:
     dependency_type: production
     update_type: "semver:patch"
+- match:
+    dependency_type: production
+    update_type: "security:minor"
 - match:
     dependency_type: development
     update_type: "semver:minor"

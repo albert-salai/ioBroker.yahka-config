@@ -28,7 +28,8 @@ ioBroker adapter for Yahka (HomeKit) configuration.
 ## Setup extras (B-EXTRAS)
 
 Setup rules: `~/.claude/rules/iobroker-adapter.md`. Beyond the baseline: `release-script` (`npm run release`);
-`admin/index_m.js` is excluded from lint (untyped legacy admin UI).
+`admin/index_m.js` is excluded from lint (untyped legacy admin UI); `.gitignore` entry for the `.claude/`
+exceptions.
 
 ## Lazily loaded knowledge
 
