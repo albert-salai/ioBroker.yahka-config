@@ -6,7 +6,7 @@
 
 **Contains:** project facts, code layout, traps, setup extras, the lazy-file table; short imperative rules.
 
-**Not here:** adapter development rules (`/opt/iobroker/my_modules/CLAUDE.md`), adapter setup rules
+**Not here:** adapter development rules (`~/.claude/CLAUDE.md`), adapter setup rules
 (`~/.claude/rules/iobroker-adapter.md`), rules for one generator (lazy files).
 
 ioBroker adapter for Yahka (HomeKit) configuration.
