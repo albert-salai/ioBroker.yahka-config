@@ -6,8 +6,8 @@
 
 **Contains:** project facts, code layout, traps, setup extras, the lazy-file table; short imperative rules.
 
-**Not here:** adapter development rules (`~/.claude/CLAUDE.md`, skill `developing-adapters`), adapter
-setup rules (`/opt/iobroker/my_modules/.claude/rules/iobroker-adapter.md`), rules for one generator (lazy files).
+**Not here:** adapter development rules (`~/.claude/CLAUDE.md`, skill `developing-adapters`), rules for one generator
+(lazy files).
 
 ioBroker adapter for Yahka (HomeKit) configuration.
 
@@ -27,7 +27,7 @@ ioBroker adapter for Yahka (HomeKit) configuration.
 
 ## Setup extras (B-EXTRAS)
 
-Setup rules: `/opt/iobroker/my_modules/.claude/rules/iobroker-adapter.md`. Beyond the baseline: `release-script` (`npm
+Beyond the baseline: `release-script` (`npm
 run release`); `admin/index_m.js` is excluded from lint (untyped legacy admin UI); `.gitignore` entry for the `.claude/`
 exceptions.
 
