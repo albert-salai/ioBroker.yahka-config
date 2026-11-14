@@ -12,7 +12,10 @@
 
 ## yahka-config adapter for ioBroker
 
-yahka-config
+Keeps the devices of the Yahka (HomeKit) bridge in step with other ioBroker adapters. Per Yahka instance you tick the
+source instances (Danfoss Icon, FRITZ!DECT, Shelly, TR-064, Zigbee2MQTT, Dreame, rpi-io, switchboard-io) whose devices
+the Home app shows. At each start the adapter adds new devices, switches vanished ones off and leaves your own changes
+in place, then stops until its next scheduled start.
 
 ## Developer manual
 This section is intended for the developer. It can be deleted later.

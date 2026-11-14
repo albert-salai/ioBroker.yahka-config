@@ -12,6 +12,8 @@ ioBroker adapter for Yahka (HomeKit) configuration.
 
 **Path:** `/opt/iobroker/my_modules/ioBroker.yahka-config`; Linux (Raspberry Pi).
 
+**Requirements:** `docs/REQUIREMENTS.md` (IDs `REQ-<NAME>`, skill `specifying-requirements`).
+
 ## Code layout
 
 - `src/main.ts`: adapter class only (orchestration); `src/lib/`: `types`, `helpers`, `merge`; `admin/index_m.js`
