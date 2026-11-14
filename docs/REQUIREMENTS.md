@@ -36,41 +36,41 @@ Statements follow the skill `specifying-requirements`. A requirement not yet con
 
 ### Schedule
 
-INFERRED: **`REQ-RUN`: When the adapter starts, it regenerates the devices of every Yahka instance in the settings, then stops until its next scheduled start.**
+**`REQ-RUN`: When the adapter starts, it regenerates the devices of every Yahka instance in the settings, then stops until its next scheduled start.**
 
 The adapter's schedule sets the period. A Yahka instance that is not installed is
 skipped with a warning.
 
 ### Merge
 
-INFERRED: **`REQ-MERGE-ADD`: The adapter appends a device that a ticked source provides and Yahka does not yet list, with defaults for manufacturer, model, serial and firmware, and with all its characteristics on.**
+**`REQ-MERGE-ADD`: The adapter appends a device that a ticked source provides and Yahka does not yet list, with defaults for manufacturer, model, serial and firmware, and with all its characteristics on.**
 
-INFERRED: **`REQ-MERGE-KEEP`: A device that Yahka already lists keeps its position and its on/off setting, and a device that is off moves to the group "~disabled~".**
+**`REQ-MERGE-KEEP`: A device that Yahka already lists keeps its position and its on/off setting, and a device that is off moves to the group "~disabled~".**
 
 The generated services replace the old ones, so a change at the source reaches the Home app, while the user's choice
 to hide a device holds.
 
-INFERRED: **`REQ-MERGE-OBSOLETE`: A device that Yahka lists but no ticked source provides any more is switched off and moved to the group "~obsolete~".**
+**`REQ-MERGE-OBSOLETE`: A device that Yahka lists but no ticked source provides any more is switched off and moved to the group "~obsolete~".**
 
-INFERRED: **`REQ-MERGE-INVALID`: A device that its source reports but cannot be generated, for example a Zigbee device without definition, is switched off and moved to the group "~disabled~" when Yahka lists it, and is skipped without entry when Yahka does not.**
+**`REQ-MERGE-INVALID`: A device that its source reports but cannot be generated, for example a Zigbee device without definition, is switched off and moved to the group "~disabled~" when Yahka lists it, and is skipped without entry when Yahka does not.**
 
-INFERRED: **`REQ-MERGE-STABLE`: A device keeps the name it was first created with, built from its source instance and a stable identifier of the device, so the Home app keeps its room, name and automations.**
+**`REQ-MERGE-STABLE`: A device keeps the name it was first created with, built from its source instance and a stable identifier of the device, so the Home app keeps its room, name and automations.**
 
 A Zigbee device is identified by its IEEE address, never by the name the user gave it.
 
-INFERRED: **`REQ-SAVE`: The adapter writes the Yahka configuration only when it changed, and logs each change.**
+**`REQ-SAVE`: The adapter writes the Yahka configuration only when it changed, and logs each change.**
 
 ### Failure
 
-INFERRED: **`REQ-FAIL-KEEP`: When a ticked source fails, or yields neither a device nor a skipped one although Yahka lists devices of it, or two generated devices share a name, the adapter leaves the devices of that Yahka instance unchanged and logs an error.**
+**`REQ-FAIL-KEEP`: When a ticked source fails, or yields neither a device nor a skipped one although Yahka lists devices of it, or two generated devices share a name, the adapter leaves the devices of that Yahka instance unchanged and logs an error.**
 
 A missing source would otherwise mark all its devices obsolete. The other Yahka instances still update.
 
 ### History
 
-INFERRED: **`REQ-HISTORY`: For the FRITZ!DECT temperature, switch and setpoint states and the Zigbee link-quality and availability states of the devices it generated, the adapter enables history with the system's default history instance.**
+**`REQ-HISTORY`: For the FRITZ!DECT temperature, switch and setpoint states of the devices it generates and the link-quality and availability states of every Zigbee device with a definition, the adapter enables history with the system's default history instance.**
 
-This happens on every run in which the source succeeds, whether or not the Yahka configuration changed; without a default
+This happens on every run in which every ticked source of that Yahka instance succeeds, whether or not the Yahka configuration changed; without a default
 history instance nothing is enabled.
 
 ## Settings
@@ -91,33 +91,33 @@ while its source reports it offline, where the source offers such a state.
 
 ### Switches and outputs
 
-INFERRED: **`REQ-SRC-ROLE`: For `rpi-io` and `switchboard-io`, each state whose role is a contact, motion, occupancy or leak sensor, a switch, a light switch, a fan switch, a door lock or a garage door becomes the matching Home app accessory; only these roles produce an accessory.**
+**`REQ-SRC-ROLE`: For `rpi-io` and `switchboard-io`, each state whose role is a contact, motion, occupancy or leak sensor, a switch, a light switch, a fan switch, a door lock or a garage door becomes the matching Home app accessory; only these roles produce an accessory.**
 
 A door lock or garage door shows the state of its status state as the current position and sends the target position to
 the output.
 
-INFERRED: **`REQ-SRC-SHELLY`: For each relay channel of a Shelly instance the adapter creates a switch, and for each light channel a light bulb with brightness.**
+**`REQ-SRC-SHELLY`: For each relay channel of a Shelly instance the adapter creates a switch, and for each light channel a light bulb with brightness.**
 
-INFERRED: **`REQ-SRC-TR064`: For each boolean state of the TR-064 instance, for example the Wi-Fi switches of the router, the adapter creates a switch.**
+**`REQ-SRC-TR064`: For each boolean state of the TR-064 instance, for example the Wi-Fi switches of the router, the adapter creates a switch.**
 
-INFERRED: **`REQ-SRC-FRITZ`: For each FRITZ!DECT device of a known product, the adapter creates a temperature sensor (Repeater 100), a switch (Smart Energy 200) or a thermostat (Smart Thermo 301); only these products produce an accessory, and any other product is logged as an error.**
+**`REQ-SRC-FRITZ`: For each FRITZ!DECT device of a known product, the adapter creates a temperature sensor (Repeater 100), a switch (Smart Energy 200) or a thermostat (Smart Thermo 301); only these products produce an accessory, and any other product is logged as an error.**
 
 The adapter also enables history for the states these devices show.
 
 ### Thermostats
 
-INFERRED: **`REQ-SRC-DANFOSS`: For a Danfoss Icon instance the adapter creates a switch for the house pause and a thermostat per room with target temperature, room temperature and heating state; all thermostats are unreachable while the house is not connected.**
+**`REQ-SRC-DANFOSS`: For a Danfoss Icon instance the adapter creates a switch for the house pause and a thermostat per room with target temperature, room temperature and heating state; all thermostats are unreachable while the house is not connected.**
 
 The thermostat shows automatic mode, in degrees Celsius, and heating while the valve is open and cooling otherwise.
 
 ### Zigbee devices
 
-INFERRED: **`REQ-SRC-ZIGBEE`: For each Zigbee2MQTT device that exposes a light the adapter creates a light bulb with the brightness and colour temperature the device offers.**
+**`REQ-SRC-ZIGBEE`: For each Zigbee2MQTT device that exposes a light the adapter creates a light bulb with the brightness and colour temperature the device offers.**
 
-INFERRED: **`REQ-SRC-ZIGBEE-SENSOR`: For each other Zigbee2MQTT device that exposes a contact, water-leak, occupancy or humidity reading the adapter creates the matching sensor, with a linked light-level or temperature sensor and a battery service where the device exposes them.**
+**`REQ-SRC-ZIGBEE-SENSOR`: For each other Zigbee2MQTT device that exposes a contact, water-leak, occupancy or humidity reading the adapter creates the matching sensor, with a linked light-level or temperature sensor and a battery service where the device exposes them.**
 
 A battery below the warning level shows as low battery in the Home app. Devices of other kinds get no accessory.
 
 ### Robot vacuums
 
-INFERRED: **`REQ-SRC-DREAME`: For each shortcut of a Dreame robot vacuum the adapter creates a switch that starts the shortcut when turned on, sends the robot back to its dock when turned off and shows on while the shortcut runs; only shortcuts of vacuums become switches.**
+**`REQ-SRC-DREAME`: For each shortcut of a Dreame robot vacuum the adapter creates a switch that starts the shortcut when turned on, sends the robot back to its dock when turned off and shows on while the shortcut runs; only shortcuts of vacuums become switches.**
