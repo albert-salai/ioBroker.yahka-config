@@ -89,11 +89,8 @@ class YahkaConfig extends utils.Adapter {
 	}
 
 	/**
-	 * Regenerates the devices of one yahka instance and saves them if they changed.
-	 *
-	 * @param dstId		yahka instance, e.g. 'yahka.0'
-	 * @param srcEnabled	source instances mapped to their enabled flag
-	 * @param yahkaDst	object 'system.adapter.<dstId>'
+	 * Regenerates the devices of one yahka instance (dstId, e.g. 'yahka.0') and saves them if they changed.
+	 * srcEnabled maps its source instances to their enabled flag; yahkaDst is the object 'system.adapter.<dstId>'.
 	 */
 	private async updateYahkaDevices(
 		dstId: string,
@@ -156,10 +153,8 @@ class YahkaConfig extends utils.Adapter {
 	}
 
 	/**
-	 * Logs which source instances of a yahka instance are enabled or skipped.
-	 *
-	 * @param dstId yahka instance, e.g. 'yahka.0'
-	 * @param srcEnabled source instances mapped to their enabled flag
+	 * Logs which source instances (srcEnabled: instance mapped to its enabled flag) of the yahka instance dstId, e.g.
+	 * 'yahka.0', are enabled or skipped.
 	 */
 	private logSources(dstId: string, srcEnabled: ConfigMapping[string]): void {
 		for (const [srcInstId, enabled] of Object.entries(srcEnabled)) {
@@ -176,11 +171,7 @@ class YahkaConfig extends utils.Adapter {
 	}
 
 	/**
-	 * Logs the device names a merge disabled, dropped as obsolete or added.
-	 *
-	 * @param disabled names of devices that are now disabled
-	 * @param obsolete names of devices dropped as obsolete
-	 * @param added names of devices that are new
+	 * Logs the device names a merge disabled, dropped as obsolete or added, one line per name.
 	 */
 	private logMergeResult(disabled: string[], obsolete: string[], added: string[]): void {
 		const labelled = [
@@ -196,13 +187,9 @@ class YahkaConfig extends utils.Adapter {
 	}
 
 	/**
-	 * Writes the merged devices to DRYRUN_DIR when set, else saves them in the yahka instance when they changed.
-	 *
-	 * @param dstId yahka instance, e.g. 'yahka.0'
-	 * @param yahkaDst object 'system.adapter.<dstId>'
-	 * @param bridge native.bridge of yahkaDst; receives newDevs
-	 * @param newDevs merged devices
-	 * @param changed newDevs differ from the configured devices
+	 * Writes the merged devices (newDevs) to DRYRUN_DIR when set, else saves them in the yahka instance dstId, e.g.
+	 * 'yahka.0', when changed is true (newDevs differ from the configured devices). yahkaDst is the object
+	 * 'system.adapter.<dstId>'; its native.bridge (bridge) receives newDevs.
 	 */
 	private async saveDevices(
 		dstId: string,
