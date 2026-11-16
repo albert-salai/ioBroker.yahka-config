@@ -32,6 +32,11 @@ const GENERATORS: Record<string, Generator> = {
 // ~~~~~~~~~~~
 // YahkaConfig
 // ~~~~~~~~~~~
+// native.bridge of a yahka instance: the devices it exposes to HomeKit
+interface YahkaBridge {
+	devices?: AccConfig[];
+}
+
 class YahkaConfig extends utils.Adapter {
 	private historyId = '';
 
@@ -99,7 +104,7 @@ class YahkaConfig extends utils.Adapter {
 
 		// bridge
 		const native = yahkaDst.native as Record<string, unknown>;
-		const bridge = native['bridge'] as { devices?: AccConfig[] } | undefined;
+		const bridge = native['bridge'] as YahkaBridge | undefined;
 		if (!bridge) {
 			this.log.warn(
 				sprintf('%-31s %-20s %-50s', 'updateYahkaDevices()', dstId, 'skipped: native.bridge missing'),
@@ -141,7 +146,7 @@ class YahkaConfig extends utils.Adapter {
 
 		// newDevs
 		const { newDevs, disabled, obsolete, added } = mergeDevices(oldDevs, createdDevs, invalid);
-		this.logMergeResult({ disabled, obsolete, added });
+		this.logMergeResult(disabled, obsolete, added);
 
 		// log diffs between oldDevs and newDevs
 		const diffs = deepDiff(oldDevs, newDevs);
@@ -150,7 +155,12 @@ class YahkaConfig extends utils.Adapter {
 		await this.saveDevices(dstId, yahkaDst, bridge, newDevs, diffs !== undefined);
 	}
 
-	/** Logs which source instances of a yahka instance are enabled or skipped. */
+	/**
+	 * Logs which source instances of a yahka instance are enabled or skipped.
+	 *
+	 * @param dstId yahka instance, e.g. 'yahka.0'
+	 * @param srcEnabled source instances mapped to their enabled flag
+	 */
 	private logSources(dstId: string, srcEnabled: ConfigMapping[string]): void {
 		for (const [srcInstId, enabled] of Object.entries(srcEnabled)) {
 			this.log.info(
@@ -165,9 +175,20 @@ class YahkaConfig extends utils.Adapter {
 		}
 	}
 
-	/** Logs the device names a merge disabled, dropped as obsolete or added. */
-	private logMergeResult(result: { disabled: string[]; obsolete: string[]; added: string[] }): void {
-		for (const [label, names] of Object.entries(result)) {
+	/**
+	 * Logs the device names a merge disabled, dropped as obsolete or added.
+	 *
+	 * @param disabled names of devices that are now disabled
+	 * @param obsolete names of devices dropped as obsolete
+	 * @param added names of devices that are new
+	 */
+	private logMergeResult(disabled: string[], obsolete: string[], added: string[]): void {
+		const labelled = [
+			['disabled', disabled],
+			['obsolete', obsolete],
+			['added', added],
+		] as const;
+		for (const [label, names] of labelled) {
 			for (const name of names) {
 				this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', label, name));
 			}
@@ -177,12 +198,16 @@ class YahkaConfig extends utils.Adapter {
 	/**
 	 * Writes the merged devices to DRYRUN_DIR when set, else saves them in the yahka instance when they changed.
 	 *
-	 * @param changed	newDevs differ from the configured devices
+	 * @param dstId yahka instance, e.g. 'yahka.0'
+	 * @param yahkaDst object 'system.adapter.<dstId>'
+	 * @param bridge native.bridge of yahkaDst; receives newDevs
+	 * @param newDevs merged devices
+	 * @param changed newDevs differ from the configured devices
 	 */
 	private async saveDevices(
 		dstId: string,
 		yahkaDst: ioBroker.AdapterObject,
-		bridge: { devices?: AccConfig[] },
+		bridge: YahkaBridge,
 		newDevs: AccConfig[],
 		changed: boolean,
 	): Promise<void> {
