@@ -66,29 +66,24 @@ const getObjectViewAsync = asyncSocketCmd('getObjectView');			// getObjectViewAs
 let settings = {};
 
 
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// load() will be called by the admin adapter when the settings page loads
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// eslint-disable-next-line no-unused-vars
-async function load(_settings, onChange) {
-	settings = _settings  ||  {};
-	onChange(true);				// always update settings
-
-	// instIds
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// readInstanceIds() resolves to the ids of the source instances and of the yahka instances
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+async function readInstanceIds() {
 	const instIds = Object.keys(await getObjectViewAsync('system', 'instance', {})).map(id => id.replace('system.adapter.', ''));
 	//console.log('load(): instIds: ' + JSON.stringify(instIds,	null, 4));
 
-	// srcIds, dstIds
 	const srcAdapters	= [ 'tr-064', 'fritzdect', 'shelly', 'zigbee2mqtt', 'danfossicon', 'dreame', 'switchboard-io', 'rpi-io' ];
 	const srcIds		= instIds.filter(instId => srcAdapters.find(name => instId.startsWith(name + '.')));
 	const dstIds		= instIds.filter(instId => instId.startsWith('yahka.'));
-	console.log('load(): srcIds: ' + JSON.stringify(srcIds,	null, 4));
-	console.log('load(): dstIds: ' + JSON.stringify(dstIds, null, 4));
+	return { srcIds, dstIds };
+}
 
-	// mapping
-	//console.log('load(): loaded  settings: ' + JSON.stringify(settings,	null, 4));
-	const mapping = settings.mapping = settings.mapping  ||  {};			// { dstId: { srcId: false, ... }, ... }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// reconcileMapping(mapping, srcIds, dstIds) adds the missing and removes the obsolete entries
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+function reconcileMapping(mapping, srcIds, dstIds) {
 	// add missing mappings
 	for (const dstId of dstIds) {
 		const dstMap = mapping[dstId] = mapping[dstId]  ||  {};
@@ -111,7 +106,13 @@ async function load(_settings, onChange) {
 		}
 	}
 	//console.log('load(): updated settings: ' + JSON.stringify(settings,	null, 4));
+}
 
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// renderMappingTable(mapping, srcIds, dstIds) fills the head and body of #yahka_mapping
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+function renderMappingTable(mapping, srcIds, dstIds) {
 	// add yahka_mapping thead content
 	let thead_txt = '<tr>';
 	thead_txt += '<th>source instance</th>';
@@ -139,6 +140,24 @@ async function load(_settings, onChange) {
 		tbody_txt += '</tr>';
 	}
 	$('#yahka_mapping').find('tbody').html(tbody_txt);
+}
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// load() will be called by the admin adapter when the settings page loads
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// eslint-disable-next-line no-unused-vars
+async function load(_settings, onChange) {
+	settings = _settings  ||  {};
+	onChange(true);				// always update settings
+
+	const { srcIds, dstIds } = await readInstanceIds();
+	console.log('load(): srcIds: ' + JSON.stringify(srcIds,	null, 4));
+	console.log('load(): dstIds: ' + JSON.stringify(dstIds, null, 4));
+
+	const mapping = settings.mapping = settings.mapping  ||  {};			// { dstId: { srcId: false, ... }, ... }
+	reconcileMapping(mapping, srcIds, dstIds);
+	renderMappingTable(mapping, srcIds, dstIds);
 
 	// select elements with id=key, class=value and insert value
 	$('.value').each(() => {
