@@ -21,6 +21,9 @@ interface ZigbeeSensor {
 	characteristic: string;
 	stateSuffix: string;
 }
+const FETCH_TIMEOUT_MS = 10 * 1000; // wait for the bridge device list
+const MIN_COLOR_TEMPERATURE_MIRED = 153; // the lowest color temperature (coldest white) that is passed on
+const LOCAL_MQTT_HOST = '127.0.0.1';
 const SENSOR_MAP: {
 	primaryFeature: string;
 	primary: ZigbeeSensor;
@@ -94,7 +97,7 @@ export function zigbeeMqttSettings(native: Record<string, unknown> | undefined):
 
 	const baseTopic = str('baseTopic') ?? 'zigbee2mqtt';
 	const settings: MqttSettings = {
-		url: 'mqtt://127.0.0.1:1883',
+		url: `mqtt://${LOCAL_MQTT_HOST}:1883`,
 		topic: `${baseTopic}/bridge/devices`,
 	};
 
@@ -111,7 +114,7 @@ export function zigbeeMqttSettings(native: Record<string, unknown> | undefined):
 			}
 		}
 	} else if (native?.['connectionType'] === 'intmqtt' && num('mqttServerPort')) {
-		settings.url = `mqtt://127.0.0.1:${String(num('mqttServerPort') ?? 0)}`;
+		settings.url = `mqtt://${LOCAL_MQTT_HOST}:${String(num('mqttServerPort') ?? 0)}`;
 	}
 	return settings;
 }
@@ -146,7 +149,7 @@ export function fetchZigbeeDevices(settings: MqttSettings): Promise<ZigbeeDevice
 		};
 		timers.timeout = setTimeout(() => {
 			finish(new Error(`timeout waiting for ${settings.topic}`));
-		}, 10000);
+		}, FETCH_TIMEOUT_MS);
 		client.on('error', (err: Error) => {
 			finish(err);
 		});
@@ -293,9 +296,9 @@ export async function createZigbee2mqtt(
 							onlyAck('ColorTemperature', `${iobDev._id}.colortemp`, {
 								conversionFunction: 'script',
 								conversionParameters: {
-									// clamp to 153 mired, the lowest color temperature (coldest white) that is passed on
-									toHomeKit: 'return Math.max(153, value)',
-									toIOBroker: 'return Math.max(153, value)',
+									// clamp to the lowest color temperature (coldest white) that is passed on
+									toHomeKit: `return Math.max(${String(MIN_COLOR_TEMPERATURE_MIRED)}, value)`,
+									toIOBroker: `return Math.max(${String(MIN_COLOR_TEMPERATURE_MIRED)}, value)`,
 								},
 							}),
 						);
