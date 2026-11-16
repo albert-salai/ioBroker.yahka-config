@@ -95,17 +95,7 @@ class YahkaConfig extends utils.Adapter {
 		srcEnabled: ConfigMapping[string],
 		yahkaDst: ioBroker.AdapterObject,
 	): Promise<void> {
-		for (const [srcInstId, enabled] of Object.entries(srcEnabled)) {
-			this.log.info(
-				sprintf(
-					'%-31s %-20s %-50s %s',
-					'updateYahkaDevices()',
-					dstId,
-					srcInstId,
-					enabled ? 'enabled' : 'skipped',
-				),
-			);
-		}
+		this.logSources(dstId, srcEnabled);
 
 		// bridge
 		const native = yahkaDst.native as Record<string, unknown>;
@@ -151,20 +141,51 @@ class YahkaConfig extends utils.Adapter {
 
 		// newDevs
 		const { newDevs, disabled, obsolete, added } = mergeDevices(oldDevs, createdDevs, invalid);
-		for (const name of disabled) {
-			this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'disabled', name));
-		}
-		for (const name of obsolete) {
-			this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'obsolete', name));
-		}
-		for (const name of added) {
-			this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', 'added', name));
-		}
+		this.logMergeResult({ disabled, obsolete, added });
 
 		// log diffs between oldDevs and newDevs
 		const diffs = deepDiff(oldDevs, newDevs);
 		this.logDiffs('updateYahkaDevices()', diffs ?? []);
 
+		await this.saveDevices(dstId, yahkaDst, bridge, newDevs, diffs !== undefined);
+	}
+
+	/** Logs which source instances of a yahka instance are enabled or skipped. */
+	private logSources(dstId: string, srcEnabled: ConfigMapping[string]): void {
+		for (const [srcInstId, enabled] of Object.entries(srcEnabled)) {
+			this.log.info(
+				sprintf(
+					'%-31s %-20s %-50s %s',
+					'updateYahkaDevices()',
+					dstId,
+					srcInstId,
+					enabled ? 'enabled' : 'skipped',
+				),
+			);
+		}
+	}
+
+	/** Logs the device names a merge disabled, dropped as obsolete or added. */
+	private logMergeResult(result: { disabled: string[]; obsolete: string[]; added: string[] }): void {
+		for (const [label, names] of Object.entries(result)) {
+			for (const name of names) {
+				this.log.info(sprintf('%-31s %-20s %-30s', 'updateYahkaDevices()', label, name));
+			}
+		}
+	}
+
+	/**
+	 * Writes the merged devices to DRYRUN_DIR when set, else saves them in the yahka instance when they changed.
+	 *
+	 * @param changed	newDevs differ from the configured devices
+	 */
+	private async saveDevices(
+		dstId: string,
+		yahkaDst: ioBroker.AdapterObject,
+		bridge: { devices?: AccConfig[] },
+		newDevs: AccConfig[],
+		changed: boolean,
+	): Promise<void> {
 		// dry run
 		if (DRYRUN_DIR) {
 			fs.mkdirSync(DRYRUN_DIR, { recursive: true });
@@ -173,7 +194,7 @@ class YahkaConfig extends utils.Adapter {
 		}
 
 		// save
-		if (diffs) {
+		if (changed) {
 			this.log.info(
 				sprintf('%-31s %-20s %-50s %s', 'updateYahkaDevices()', dstId, 'saving yahka devices ...', ''),
 			);
