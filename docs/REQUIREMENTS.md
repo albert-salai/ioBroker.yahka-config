@@ -32,7 +32,8 @@ Statements follow the skill `specifying-requirements`. A requirement not yet con
 
 ## Update run
 
-**Goal:** the user's Yahka bridge lists the current devices of the ticked sources without manual work.
+**Goal:** The END USER wants the Yahka bridge to list the current devices of the ticked sources, so that no manual work
+keeps the Home app up to date.
 
 ### Schedule
 
@@ -75,7 +76,8 @@ history instance nothing is enabled.
 
 ## Settings
 
-**Goal:** the user chooses which source instance feeds which Yahka instance.
+**Goal:** The END USER wants to choose which source instance feeds which Yahka instance, so that each Home app shows the
+devices meant for it.
 
 **`REQ-MAPPING`: The settings page shows a table with a row per source instance and a column per Yahka instance, and a checkbox in each cell that includes or excludes the source for that Yahka instance.**
 
@@ -84,7 +86,8 @@ and an instance that no longer exists drops out when the settings are saved.
 
 ## Accessories by source adapter
 
-**Goal:** the Home app shows the controls and sensors of each source adapter in the way the Home app expects them.
+**Goal:** The END USER wants the Home app to show the controls and sensors of each source adapter the way it expects
+them, so that the devices work without hand-made configuration.
 
 Every generated device has a Home app name from the source's display name, and a device is unreachable in the Home app
 while its source reports it offline, where the source offers such a state.
