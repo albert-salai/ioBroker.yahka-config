@@ -3,6 +3,7 @@ import { sprintf } from 'sprintf-js';
 import {
 	AccCatId,
 	type AccConfig,
+	type AccService,
 	type GeneratorContext,
 	type GeneratorResult,
 	type SrvCharacteristic,
@@ -219,6 +220,111 @@ export function validateZigbeeDevice(dev: ZigbeeDevice): NonNullable<ZigbeeDevic
 	return definition;
 }
 
+type ZigbeeDefinition = NonNullable<ZigbeeDevice['definition']>;
+type ZigbeeExpose = ZigbeeDefinition['exposes'][number];
+
+// The exposed features that have a name; features of a typed expose (light) are not among them.
+function namedFeatures(definition: ZigbeeDefinition): ZigbeeExpose[] {
+	return definition.exposes.filter(expose => 'name' in expose);
+}
+
+// Service Lightbulb: the exposed light features on/off, brightness and color temperature.
+function lightbulbService(iobDevId: string, devName: string, exposedLight: ZigbeeExpose): AccService {
+	const characteristics: SrvCharacteristic[] = [];
+	for (const feature of exposedLight.features ?? []) {
+		if (feature.name === 'state') {
+			characteristics.push(onlyAck('On', `${iobDevId}.state`));
+		} else if (feature.name === 'brightness') {
+			characteristics.push(onlyAck('Brightness', `${iobDevId}.brightness`));
+		} else if (feature.name === 'color_temp') {
+			characteristics.push(
+				onlyAck('ColorTemperature', `${iobDevId}.colortemp`, {
+					conversionFunction: 'script',
+					conversionParameters: {
+						// clamp to the lowest color temperature (coldest white) that is passed on
+						toHomeKit: `return Math.max(${String(MIN_COLOR_TEMPERATURE_MIRED)}, value)`,
+						toIOBroker: `return Math.max(${String(MIN_COLOR_TEMPERATURE_MIRED)}, value)`,
+					},
+				}),
+			);
+		}
+	}
+	return { type: 'Lightbulb', subType: '', name: devName, characteristics: characteristics };
+}
+
+// Service sensor (+ linked sensor + Battery), in the order of the exposed features; undefined: no supported sensor.
+function sensorServices(iobDevId: string, devName: string, features: ZigbeeExpose[]): AccService[] | undefined {
+	const featureNames = features.map(feature => feature.name);
+	const sensor = SENSOR_MAP.find(candidate => featureNames.includes(candidate.primaryFeature));
+	if (!sensor) {
+		return undefined;
+	}
+	const services: AccService[] = [];
+	for (const feature of features) {
+		const linked = Object.hasOwn(sensor.linked, feature.name ?? '') ? sensor.linked[feature.name ?? ''] : undefined;
+		if (feature.name === sensor.primaryFeature) {
+			const { type, characteristic, stateSuffix } = sensor.primary;
+			services.push({
+				type: type,
+				subType: '',
+				name: devName,
+				characteristics: [onlyAck(characteristic, `${iobDevId}.${stateSuffix}`)],
+				isPrimary: true,
+			});
+		}
+		if (linked) {
+			services.push({
+				type: linked.type,
+				subType: '',
+				name: `${devName} ${linked.label}`,
+				characteristics: [onlyAck(linked.characteristic, `${iobDevId}.${linked.stateSuffix}`)],
+				linkTo: devName,
+			});
+		}
+		if (feature.name === 'battery') {
+			services.push(batteryService(iobDevId, devName));
+		}
+	}
+	return services;
+}
+
+// The accessory of one valid device: its identity plus the services of a light or a sensor (category '': none supported).
+function buildAccConfig(
+	iobDevId: string,
+	group: string,
+	accName: string,
+	zigbeeDev: ZigbeeDevice,
+	definition: ZigbeeDefinition,
+): AccConfig {
+	const { ieee_address, friendly_name, software_build_id, model_id } = zigbeeDev;
+	const { model, vendor, exposes } = definition;
+	const devName = friendly_name;
+	const accConfig: AccConfig = {
+		groupString: group, // used only by iobroker adapter to group accessories
+		name: accName,
+		model: devName, // visible within iOS home app
+		manufacturer: `${vendor} ${model_id} (${model})`, // visible within iOS home app
+		serial: ieee_address, // visible within iOS home app
+		firmware: software_build_id ?? 'n/a', // visible within iOS home app
+		category: '', // set below, '' = no supported service
+		services: [],
+		availableState: `${iobDevId}.available`,
+	};
+
+	const exposedLight = exposes.filter(expose => 'features' in expose).find(expose => expose.type === 'light');
+	if (exposedLight) {
+		accConfig.category = AccCatId.LIGHTBULB;
+		accConfig.services.push(lightbulbService(iobDevId, devName, exposedLight));
+	} else {
+		const sensor = sensorServices(iobDevId, devName, namedFeatures(definition));
+		if (sensor) {
+			accConfig.category = AccCatId.SENSOR;
+			accConfig.services.push(...sensor);
+		}
+	}
+	return accConfig;
+}
+
 // createZigbee2mqtt: one accessory per zigbee2mqtt device (Lightbulb, or sensor + linked sensor + Battery, see SENSOR_MAP).
 // Device details come from the retained mqtt message 'bridge/devices'; 'fetchDevices' can be replaced for tests.
 // Accessory name is '<srcInstId>.<ieee address>', so it survives renaming a device.
@@ -240,141 +346,46 @@ export async function createZigbee2mqtt(
 		const idPath = iobDev._id.split('.'); // [ 'zigbee2mqtt', '0', '0x680ae2fffe14a2cb' ]
 		const ieeeAddress = idPath.slice(-1)[0];
 		const zigbeeDev = zigbeeDevs.find(dev => dev.ieee_address === ieeeAddress);
-		if (zigbeeDev) {
-			// validate
-			const group = idPath.slice(0, 2).join('.');
-			const accName = `${group}.${ieeeAddress ?? ''}`; // NOTE: yahka adapter uses 'name' to build homekit UUID!
-			let definition: NonNullable<ZigbeeDevice['definition']>;
-			try {
-				definition = validateZigbeeDevice(zigbeeDev);
-			} catch (err) {
-				adapter.log.warn(
+		if (!zigbeeDev) {
+			continue;
+		}
+
+		// validate
+		const group = idPath.slice(0, 2).join('.');
+		const accName = `${group}.${ieeeAddress ?? ''}`; // NOTE: yahka adapter uses 'name' to build homekit UUID!
+		let definition: ZigbeeDefinition;
+		try {
+			definition = validateZigbeeDevice(zigbeeDev);
+		} catch (err) {
+			adapter.log.warn(
+				sprintf('%-31s %-20s %-50s %s', 'createZigbee2mqtt()', 'invalid', iobDev._id, (err as Error).message),
+			);
+			invalid.push(accName);
+			continue;
+		}
+		const accConfig = buildAccConfig(iobDev._id, group, accName, zigbeeDev, definition);
+
+		// enable history
+		if (namedFeatures(definition).some(feature => feature.name === 'linkquality')) {
+			historyIds.push(`${iobDev._id}.link_quality`);
+		}
+		historyIds.push(`${iobDev._id}.available`);
+
+		// add accessory, its services with a Name characteristic
+		if (accConfig.category !== '') {
+			for (const accService of accConfig.services) {
+				accService.characteristics.push(constChar('Name', accService.name));
+				adapter.log.debug(
 					sprintf(
 						'%-31s %-20s %-50s %s',
 						'createZigbee2mqtt()',
-						'invalid',
-						iobDev._id,
-						(err as Error).message,
+						accService.type,
+						accConfig.name,
+						accService.name,
 					),
 				);
-				invalid.push(accName);
-				continue;
 			}
-			const { ieee_address, friendly_name, software_build_id, model_id } = zigbeeDev;
-			const { model, vendor, exposes } = definition;
-
-			// accConfig
-			const devName = friendly_name;
-			const accConfig: AccConfig = {
-				groupString: group, // used only by iobroker adapter to group accessories
-				name: accName,
-				model: devName, // visible within iOS home app
-				manufacturer: `${vendor} ${model_id} (${model})`, // visible within iOS home app
-				serial: ieee_address, // visible within iOS home app
-				firmware: software_build_id ?? 'n/a', // visible within iOS home app
-				category: '', // set below, '' = no supported service
-				services: [],
-				availableState: `${iobDev._id}.available`,
-			};
-
-			// typedFeatures, features, featureNames, exposedLight
-			const features = exposes.filter(expose => 'name' in expose);
-			const featureNames = features.map(feature => feature.name);
-			const typedFeatures = exposes.filter(expose => 'features' in expose);
-			const exposedLight = typedFeatures.find(expose => expose.type === 'light');
-
-			// Service Lightbulb
-			if (exposedLight) {
-				const characteristics: SrvCharacteristic[] = [];
-				for (const feature of exposedLight.features ?? []) {
-					if (feature.name === 'state') {
-						characteristics.push(onlyAck('On', `${iobDev._id}.state`));
-					} else if (feature.name === 'brightness') {
-						characteristics.push(onlyAck('Brightness', `${iobDev._id}.brightness`));
-					} else if (feature.name === 'color_temp') {
-						characteristics.push(
-							onlyAck('ColorTemperature', `${iobDev._id}.colortemp`, {
-								conversionFunction: 'script',
-								conversionParameters: {
-									// clamp to the lowest color temperature (coldest white) that is passed on
-									toHomeKit: `return Math.max(${String(MIN_COLOR_TEMPERATURE_MIRED)}, value)`,
-									toIOBroker: `return Math.max(${String(MIN_COLOR_TEMPERATURE_MIRED)}, value)`,
-								},
-							}),
-						);
-					}
-				}
-
-				accConfig.category = AccCatId.LIGHTBULB;
-				accConfig.services.push({
-					type: 'Lightbulb',
-					subType: '',
-					name: devName,
-					characteristics: characteristics,
-				});
-
-				// Service sensor (+ linked sensor + Battery)
-			} else {
-				const sensor = SENSOR_MAP.find(sensor => featureNames.includes(sensor.primaryFeature));
-				if (sensor) {
-					accConfig.category = AccCatId.SENSOR;
-					for (const feature of features) {
-						const linked = Object.hasOwn(sensor.linked, feature.name ?? '')
-							? sensor.linked[feature.name ?? '']
-							: undefined;
-						if (feature.name === sensor.primaryFeature) {
-							const { type, characteristic, stateSuffix } = sensor.primary;
-							accConfig.services.push({
-								type: type,
-								subType: '',
-								name: devName,
-								characteristics: [onlyAck(characteristic, `${iobDev._id}.${stateSuffix}`)],
-								isPrimary: true,
-							});
-						}
-						if (linked) {
-							accConfig.services.push({
-								type: linked.type,
-								subType: '',
-								name: `${devName} ${linked.label}`,
-								characteristics: [
-									onlyAck(linked.characteristic, `${iobDev._id}.${linked.stateSuffix}`),
-								],
-								linkTo: devName,
-							});
-						}
-						if (feature.name === 'battery') {
-							accConfig.services.push(batteryService(iobDev._id, devName));
-						}
-					}
-				}
-			}
-
-			// enable history
-			if (featureNames.includes('linkquality')) {
-				historyIds.push(`${iobDev._id}.link_quality`);
-			}
-			historyIds.push(`${iobDev._id}.available`);
-
-			// add devConfig
-			if (accConfig.category !== '') {
-				// add Name characteristic to every service
-				for (const accService of accConfig.services) {
-					accService.characteristics.push(constChar('Name', accService.name));
-					adapter.log.debug(
-						sprintf(
-							'%-31s %-20s %-50s %s',
-							'createZigbee2mqtt()',
-							accService.type,
-							accConfig.name,
-							accService.name,
-						),
-					);
-				}
-
-				// add accessory
-				accConfigs.push(accConfig);
-			}
+			accConfigs.push(accConfig);
 		}
 	}
 
