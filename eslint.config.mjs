@@ -33,6 +33,10 @@ export default [
 		rules: {
 			// its autofix inserts empty jsdoc blocks (jsdoc/no-blank-blocks)
 			'jsdoc/require-jsdoc': 'off',
+			// no @param or @returns tags (typescript.md Comments); check-param-names stays on for old tags
+			'jsdoc/require-param': 'off',
+			'jsdoc/require-param-description': 'off',
+			'jsdoc/require-returns-description': 'off',
 			'@typescript-eslint/no-unused-vars': ['error', {
 				argsIgnorePattern: '^_',
 				varsIgnorePattern: '^_',
