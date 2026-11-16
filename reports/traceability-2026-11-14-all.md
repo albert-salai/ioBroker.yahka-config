@@ -25,8 +25,6 @@ Draft by an unattended run; all requirements but REQ-MAPPING are confirmed (dele
 ## Gaps
 
 - ℹ️ The README of the repo was a stub; a short END USER description was added.
-- ⚠️ Task: `sonoff` and `openweathermap` are offered in the settings page (`admin/index_m.js`) but have no generator;
-  remove them or add generators. REQ-MAPPING notes it meanwhile. The README still carries the template's developer manual.
-- ℹ️ Still `INFERRED: `: REQ-MAPPING, because of the task above (`sonoff` and `openweathermap` offered without a
-  generator).
+- ✅ `sonoff` and `openweathermap` were dropped from the settings page (2cbde08); REQ-MAPPING is confirmed.
+  The README still carries the template's developer manual.
 - ℹ️ Backward check: no test or code path lacks a requirement.

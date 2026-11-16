@@ -77,9 +77,9 @@ history instance nothing is enabled.
 
 **Goal:** the user chooses which source instance feeds which Yahka instance.
 
-INFERRED: **`REQ-MAPPING`: The settings page shows a table with a row per source instance and a column per Yahka instance, and a checkbox in each cell that includes or excludes the source for that Yahka instance.**
+**`REQ-MAPPING`: The settings page shows a table with a row per source instance and a column per Yahka instance, and a checkbox in each cell that includes or excludes the source for that Yahka instance.**
 
-The settings list the instances of the source adapters and of Yahka that exist (the list also offers two adapters that have no generator, so ticking them has no effect); a new cell starts unticked,
+The settings list the instances of the source adapters and of Yahka that exist; a new cell starts unticked,
 and an instance that no longer exists drops out when the settings are saved.
 
 ## Accessories by source adapter
